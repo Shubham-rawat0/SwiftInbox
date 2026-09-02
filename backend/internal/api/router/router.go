@@ -1,6 +1,11 @@
 package router
 
-import "net/http"
+import (
+	"net/http"
+	"time"
+
+	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/middleware"
+)
 
 type Router struct{
 	handler  	http.Handler
@@ -8,10 +13,29 @@ type Router struct{
 
 func NewServerMux()*Router{
 
-	mux:=http.NewServeMux()
+	mux:=http.NewServeMux()	
 
-	handler:=cors(mux)
+	// messageAccessLimiter := middleware.NewRateLimiter(
+	// 	100,
+	// 	"Too many requests from this IP, please slow down",
+	// 	"MESSAGE",
+	// )
 
+	// mailboxLimiter := middleware.NewRateLimiter(
+	// 	10, time.Hour,
+	// 	"Too many requests from this IP, please slow down",
+	// 	"MESSAGE",
+	// )
+
+	generalLimiter := middleware.NewRateLimiter(
+		200, time.Minute,
+		"Too many requests from this IP, please try again later",
+		"GENERAL",
+	)
+
+	handler:=generalLimiter.Middleware(mux)
+
+	handler=cors(mux)
 	return &Router{
 		handler: handler, 
 	}

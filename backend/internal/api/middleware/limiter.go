@@ -22,14 +22,15 @@ type RateLimiter struct {
 }
 
 func NewRateLimiter(
-	requestsPerMinute int,
+	limit int,
+	interval time.Duration,
 	message string,
 	logName string,
 ) *RateLimiter {
 	return &RateLimiter{
 		limiters: make(map[string]*rate.Limiter),
-		rate:     rate.Limit(requestsPerMinute) / 60,
-		burst:    requestsPerMinute,
+		rate:	  rate.Limit(float64(limit) / interval.Seconds()),
+		burst:    limit,
 		message:  message,
 		logName:  logName,
 	}
