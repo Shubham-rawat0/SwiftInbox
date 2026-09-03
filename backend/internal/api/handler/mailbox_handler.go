@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -107,6 +108,10 @@ func (m *MailboxHandler) CreateMailbox(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, err)
+			return
+		}
 		WriteError(w,http.StatusInternalServerError,errors.New("failed to create mailbox"),)
 		return
 	}

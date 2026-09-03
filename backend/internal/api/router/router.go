@@ -17,11 +17,10 @@ func NewServerMux(queries *postgres.Queries)*Router{
 
 	mux:=http.NewServeMux()	
 
-	// messageAccessLimiter := middleware.NewRateLimiter(
-	// 	100,
-	// 	"Too many requests from this IP, please slow down",
-	// 	"MESSAGE",
-	// )
+	messageAccessLimiter := middleware.NewRateLimiter(
+		100, time.Minute,
+		"Too many requests from this IP, please slow down",
+		"MESSAGE")
 
 	mailboxLimiter := middleware.NewRateLimiter(
 		10, time.Hour,
@@ -35,11 +34,14 @@ func NewServerMux(queries *postgres.Queries)*Router{
 		"GENERAL",
 	)
 
-	// messageHandler:=handler.NewMessageHandler(queries)
+	messageHandler:=handler.NewMessageHandler(queries)
 	mailboxHandler:=handler.NewMailboxHandler(queries)
 
 	mux.Handle("POST /api/mailboxes/custom",mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateEmail)))
 	mux.Handle("POST /api/mailboxes",mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateMailbox)))
+
+	mux.Handle("POST /api/mailboxes/{address}/message",messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessages)))
+	mux.Handle("POST /api/mailboxes/message",messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetRawMessage)))
 
 	mux.Handle("GET /health",http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
 		handler.WriteJSON(w,200,"healthy")
