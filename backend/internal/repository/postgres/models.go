@@ -21,9 +21,9 @@ type Mailbox struct {
 type Message struct {
 	ID        uuid.UUID
 	Sender    string
-	Message   sql.NullString
 	Subject   sql.NullString
 	MailboxID uuid.UUID
 	ExpiresAt sql.NullTime
 	CreatedAt time.Time
+	Raw       []byte
 }
