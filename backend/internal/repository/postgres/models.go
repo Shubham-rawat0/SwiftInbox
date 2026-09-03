@@ -26,4 +26,5 @@ type Message struct {
 	ExpiresAt sql.NullTime
 	CreatedAt time.Time
 	Raw       []byte
+	Address   string
 }

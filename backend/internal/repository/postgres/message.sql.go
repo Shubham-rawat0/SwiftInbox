@@ -21,7 +21,7 @@ SELECT
     subject,
     created_at
 FROM messages
-WHERE mailbox_id = $1
+WHERE address = $1
 ORDER BY created_at DESC
 LIMIT 50
 `
@@ -33,8 +33,8 @@ type GetMessagesRow struct {
 	CreatedAt time.Time
 }
 
-func (q *Queries) GetMessages(ctx context.Context, mailboxID uuid.UUID) ([]GetMessagesRow, error) {
-	rows, err := q.db.QueryContext(ctx, getMessages, mailboxID)
+func (q *Queries) GetMessages(ctx context.Context, address string) ([]GetMessagesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMessages, address)
 	if err != nil {
 		return nil, err
 	}
@@ -71,12 +71,12 @@ SELECT
     raw
 FROM messages
 WHERE id = $1
-  AND mailbox_id = $2
+  AND address = $2
 `
 
 type GetRawMessageParams struct {
-	ID        uuid.UUID
-	MailboxID uuid.UUID
+	ID      uuid.UUID
+	Address string
 }
 
 type GetRawMessageRow struct {
@@ -88,7 +88,7 @@ type GetRawMessageRow struct {
 }
 
 func (q *Queries) GetRawMessage(ctx context.Context, arg GetRawMessageParams) (GetRawMessageRow, error) {
-	row := q.db.QueryRowContext(ctx, getRawMessage, arg.ID, arg.MailboxID)
+	row := q.db.QueryRowContext(ctx, getRawMessage, arg.ID, arg.Address)
 	var i GetRawMessageRow
 	err := row.Scan(
 		&i.ID,
