@@ -1,4 +1,4 @@
--- name: CreateEmailAddress :many
+-- name: CreateEmailAddress :one
 INSERT INTO mailboxes(
     id , address , expires_at
 ) 

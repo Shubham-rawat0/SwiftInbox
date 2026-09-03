@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const createEmailAddress = `-- name: CreateEmailAddress :many
+const createEmailAddress = `-- name: CreateEmailAddress :one
 INSERT INTO mailboxes(
     id , address , expires_at
 ) 
@@ -34,25 +34,9 @@ type CreateEmailAddressRow struct {
 	ExpiresAt time.Time
 }
 
-func (q *Queries) CreateEmailAddress(ctx context.Context, arg CreateEmailAddressParams) ([]CreateEmailAddressRow, error) {
-	rows, err := q.db.QueryContext(ctx, createEmailAddress, arg.ID, arg.Address, arg.ExpiresAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []CreateEmailAddressRow
-	for rows.Next() {
-		var i CreateEmailAddressRow
-		if err := rows.Scan(&i.Address, &i.CreatedAt, &i.ExpiresAt); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) CreateEmailAddress(ctx context.Context, arg CreateEmailAddressParams) (CreateEmailAddressRow, error) {
+	row := q.db.QueryRowContext(ctx, createEmailAddress, arg.ID, arg.Address, arg.ExpiresAt)
+	var i CreateEmailAddressRow
+	err := row.Scan(&i.Address, &i.CreatedAt, &i.ExpiresAt)
+	return i, err
 }

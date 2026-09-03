@@ -38,7 +38,12 @@ func NewServerMux(queries *postgres.Queries)*Router{
 	// messageHandler:=handler.NewMessageHandler(queries)
 	mailboxHandler:=handler.NewMailboxHandler(queries)
 
-	mux.Handle("POST /custom",mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateEmail)))
+	mux.Handle("POST /api/mailboxes/custom",mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateEmail)))
+	mux.Handle("POST /api/mailboxes",mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateMailbox)))
+
+	mux.Handle("GET /health",http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
+		handler.WriteJSON(w,200,"healthy")
+	}))
 	
 	handler:=generalLimiter.Middleware(mux)
 
