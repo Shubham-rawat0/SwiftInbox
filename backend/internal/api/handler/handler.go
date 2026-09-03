@@ -1,6 +1,0 @@
-package handler
-
-
-func createEmail(){
-	
-}

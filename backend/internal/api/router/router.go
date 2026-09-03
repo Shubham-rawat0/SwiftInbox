@@ -4,14 +4,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/handler"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/middleware"
+	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
 )
 
 type Router struct{
 	handler  	http.Handler
 }
 
-func NewServerMux()*Router{
+func NewServerMux(queries *postgres.Queries)*Router{
 
 	mux:=http.NewServeMux()	
 
@@ -21,11 +23,11 @@ func NewServerMux()*Router{
 	// 	"MESSAGE",
 	// )
 
-	// mailboxLimiter := middleware.NewRateLimiter(
-	// 	10, time.Hour,
-	// 	"Too many requests from this IP, please slow down",
-	// 	"MESSAGE",
-	// )
+	mailboxLimiter := middleware.NewRateLimiter(
+		10, time.Hour,
+		"Too many requests from this IP, please slow down",
+		"MESSAGE",
+	)
 
 	generalLimiter := middleware.NewRateLimiter(
 		200, time.Minute,
@@ -33,9 +35,16 @@ func NewServerMux()*Router{
 		"GENERAL",
 	)
 
+	// messageHandler:=handler.NewMessageHandler(queries)
+	mailboxHandler:=handler.NewMailboxHandler(queries)
+
+	mux.Handle("POST /custom",mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateEmail)))
+	
 	handler:=generalLimiter.Middleware(mux)
 
-	handler=cors(mux)
+	handler=cors(handler)
+
+	
 	return &Router{
 		handler: handler, 
 	}
