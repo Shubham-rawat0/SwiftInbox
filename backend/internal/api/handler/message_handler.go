@@ -2,7 +2,6 @@ package handler
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -14,78 +13,81 @@ import (
 )
 
 type MessageHandler struct {
-    queries *postgres.Queries
+	queries *postgres.Queries
 }
 
-type ParseEmail struct{
-	ID   uuid.UUID    `json:"id"`
-	Sender   string  `json:"sender"` 
-	Subject   string  `json:"subject"` 
-	Raw      *parser.ParsedEmail  `json:"raw"`
-	CreatedAt  time.Time    `json:"created_at"`
+type MessagePreview struct {
+	ID        uuid.UUID `json:"id"`
+	Sender    string    `json:"sender"`
+	Subject   string    `json:"subject"`
+	Preview   string    `json:"preview"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
-type RequestRawMessage struct{
-	ID   uuid.UUID    `json:"id"`
-	Address  string  `json:"address"`
+type MessageResponse struct {
+	Address      string           `json:"address"`
+	Messages     []MessagePreview `json:"messages"`
+	MessageCount int              `json:"messageCount"`
 }
 
-func NewMessageHandler(q *postgres.Queries) *MessageHandler{
+func NewMessageHandler(q *postgres.Queries) *MessageHandler {
 	return &MessageHandler{
-		queries:q,
+		queries: q,
 	}
 }
 
-func (m *MessageHandler) GetMessages(w http.ResponseWriter, r *http.Request){
-	address:=r.PathValue("address")
-	address=utils.NormalizeAddress(address)
+func (m *MessageHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
+	identifier := r.PathValue("address")
+	address := utils.NormalizeAddress(identifier)
 
-	data,err:=m.queries.GetMessages(r.Context(),address)
+	var data []postgres.GetMessagesRow
+	var err error
+	
+	data, err = m.queries.GetMessages(r.Context(), address)
+	
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			WriteError(w, http.StatusNotFound, errors.New("message not found"))
+			WriteError(
+				w,
+				http.StatusNotFound,
+				errors.New("mailbox not found"),
+			)
 			return
 		}
-		WriteError(w,http.StatusInternalServerError,errors.New("failed to create mailbox"),)
+
+		WriteError(
+			w,
+			http.StatusInternalServerError,
+			errors.New("failed to fetch messages"),
+		)
 		return
 	}
 
-	WriteJSON(w, http.StatusCreated, data)
-}
+	messages := make([]MessagePreview, 0, len(data))
 
-func (m *MessageHandler) GetRawMessage(w http.ResponseWriter, r *http.Request) {
-	reqBody := RequestRawMessage{}
-	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-		WriteError(w, http.StatusBadRequest, errors.New("provide proper body"))
-		return
-	}
+	for _, msg := range data {
+		preview, err := parser.ParseTextBody(msg.Raw)
 
-	data, err := m.queries.GetRawMessage(r.Context(), postgres.GetRawMessageParams{
-		ID:      reqBody.ID,
-		Address: reqBody.Address,
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			WriteError(w, http.StatusNotFound, errors.New("message not found"))
-			return
+		if err != nil {
+			preview = "Unable to load preview"
 		}
-		WriteError(w, http.StatusInternalServerError, errors.New("failed to fetch raw message"))
-		return
+
+		preview = parser.MakePreview(preview, 150)
+
+		messages = append(messages, MessagePreview{
+			ID:        msg.ID,
+			Sender:    msg.Sender,
+			Subject:   msg.Subject.String,
+			Preview:   preview,
+			CreatedAt: msg.CreatedAt,
+		})
 	}
 
-	parsedEmail, err := parser.ParseRawMail(data.Raw)
-	if err != nil {
-		WriteError(w, http.StatusInternalServerError, errors.New("failed to parse raw message"))
-		return
+	response := MessageResponse{
+		Address:      address,
+		Messages:     messages,
+		MessageCount: len(messages),
 	}
 
-	resp := ParseEmail{
-		ID:        data.ID,
-		Subject:   data.Subject.String,
-		Sender:    data.Sender, 
-		CreatedAt: data.CreatedAt,
-		Raw:       parsedEmail,
-	}
-
-	WriteJSON(w, http.StatusOK, resp)
+	WriteJSON(w, http.StatusOK, response)
 }

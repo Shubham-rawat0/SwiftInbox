@@ -13,12 +13,70 @@ import (
 	"github.com/google/uuid"
 )
 
+const createMessage = `-- name: CreateMessage :one
+
+INSERT INTO messages (
+    id,
+    mailbox_id,
+    address,
+    sender,
+    subject,
+    raw,
+    expires_at
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7
+)
+RETURNING id, sender, subject, mailbox_id, expires_at, created_at, raw, address
+`
+
+type CreateMessageParams struct {
+	ID        uuid.UUID
+	MailboxID uuid.UUID
+	Address   string
+	Sender    string
+	Subject   sql.NullString
+	Raw       []byte
+	ExpiresAt time.Time
+}
+
+func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error) {
+	row := q.db.QueryRowContext(ctx, createMessage,
+		arg.ID,
+		arg.MailboxID,
+		arg.Address,
+		arg.Sender,
+		arg.Subject,
+		arg.Raw,
+		arg.ExpiresAt,
+	)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.Sender,
+		&i.Subject,
+		&i.MailboxID,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.Raw,
+		&i.Address,
+	)
+	return i, err
+}
+
 const getMessages = `-- name: GetMessages :many
 
 SELECT
     id,
     sender,
     subject,
+    raw,
     created_at
 FROM messages
 WHERE address = $1
@@ -30,6 +88,7 @@ type GetMessagesRow struct {
 	ID        uuid.UUID
 	Sender    string
 	Subject   sql.NullString
+	Raw       []byte
 	CreatedAt time.Time
 }
 
@@ -46,6 +105,7 @@ func (q *Queries) GetMessages(ctx context.Context, address string) ([]GetMessage
 			&i.ID,
 			&i.Sender,
 			&i.Subject,
+			&i.Raw,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -61,41 +121,53 @@ func (q *Queries) GetMessages(ctx context.Context, address string) ([]GetMessage
 	return items, nil
 }
 
-const getRawMessage = `-- name: GetRawMessage :one
+const getMessagesByMailboxID = `-- name: GetMessagesByMailboxID :many
 
 SELECT
     id,
     sender,
     subject,
-    created_at,
-    raw
+    raw,
+    created_at
 FROM messages
-WHERE id = $1
-  AND address = $2
+WHERE mailbox_id = $1
+ORDER BY created_at DESC
+LIMIT 50
 `
 
-type GetRawMessageParams struct {
-	ID      uuid.UUID
-	Address string
-}
-
-type GetRawMessageRow struct {
+type GetMessagesByMailboxIDRow struct {
 	ID        uuid.UUID
 	Sender    string
 	Subject   sql.NullString
-	CreatedAt time.Time
 	Raw       []byte
+	CreatedAt time.Time
 }
 
-func (q *Queries) GetRawMessage(ctx context.Context, arg GetRawMessageParams) (GetRawMessageRow, error) {
-	row := q.db.QueryRowContext(ctx, getRawMessage, arg.ID, arg.Address)
-	var i GetRawMessageRow
-	err := row.Scan(
-		&i.ID,
-		&i.Sender,
-		&i.Subject,
-		&i.CreatedAt,
-		&i.Raw,
-	)
-	return i, err
+func (q *Queries) GetMessagesByMailboxID(ctx context.Context, mailboxID uuid.UUID) ([]GetMessagesByMailboxIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMessagesByMailboxID, mailboxID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMessagesByMailboxIDRow
+	for rows.Next() {
+		var i GetMessagesByMailboxIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Sender,
+			&i.Subject,
+			&i.Raw,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

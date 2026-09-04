@@ -40,3 +40,49 @@ func (q *Queries) CreateEmailAddress(ctx context.Context, arg CreateEmailAddress
 	err := row.Scan(&i.Address, &i.CreatedAt, &i.ExpiresAt)
 	return i, err
 }
+
+const getMailboxId = `-- name: GetMailboxId :one
+SELECT id from mailboxes where address=$1
+`
+
+func (q *Queries) GetMailboxId(ctx context.Context, address string) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getMailboxId, address)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const upsertMailbox = `-- name: UpsertMailbox :one
+
+INSERT INTO mailboxes (
+    id,
+    address,
+    expires_at
+)
+VALUES (
+    $1,
+    $2,
+    $3
+)
+ON CONFLICT (address)
+DO UPDATE SET address = EXCLUDED.address
+RETURNING id, address, created_at, expires_at
+`
+
+type UpsertMailboxParams struct {
+	ID        uuid.UUID
+	Address   string
+	ExpiresAt time.Time
+}
+
+func (q *Queries) UpsertMailbox(ctx context.Context, arg UpsertMailboxParams) (Mailbox, error) {
+	row := q.db.QueryRowContext(ctx, upsertMailbox, arg.ID, arg.Address, arg.ExpiresAt)
+	var i Mailbox
+	err := row.Scan(
+		&i.ID,
+		&i.Address,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}

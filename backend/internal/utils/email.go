@@ -6,9 +6,9 @@ import (
 	"strings"
 )
 
-var allowedDomain = getAllowedDomain()
+var allowedDomain = GetAllowedDomain()
 
-func getAllowedDomain() string {
+func GetAllowedDomain() string {
 	if domain := os.Getenv("SMTP_DOMAIN"); domain != "" {
 		return domain
 	}

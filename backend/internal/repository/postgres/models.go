@@ -23,7 +23,7 @@ type Message struct {
 	Sender    string
 	Subject   sql.NullString
 	MailboxID uuid.UUID
-	ExpiresAt sql.NullTime
+	ExpiresAt time.Time
 	CreatedAt time.Time
 	Raw       []byte
 	Address   string

@@ -1,1 +1,3 @@
-package smtp
+package main
+
+func main(){}
