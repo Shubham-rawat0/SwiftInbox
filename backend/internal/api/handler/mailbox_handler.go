@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -18,7 +17,8 @@ type MailboxHandler struct {
 }
 
 type RequestEmailBody struct {
-	Username string `json:"username"`
+	Username  string     `json:"username"`
+	ExpiresAt *time.Time `json:"expiresAt"`
 }
 
 func NewMailboxHandler(q *postgres.Queries) *MailboxHandler {
@@ -31,7 +31,6 @@ func (m *MailboxHandler) CreateEmail(w http.ResponseWriter, r *http.Request) {
 	reqBody := RequestEmailBody{}
 
 	err := json.NewDecoder(r.Body).Decode(&reqBody)
-
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err)
 		return
@@ -49,16 +48,29 @@ func (m *MailboxHandler) CreateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if address == "" {
-		fmt.Println("makeAddress return empty for", reqBody.Username)
-		WriteError(w, http.StatusBadGateway, err)
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to generate email address"))
+		return
 	}
 
-	expiresAt := time.Now().Add(24 * time.Hour)
 	id := uuid.New()
+	createdBy, ok := utils.DeveloperIDFromContext(r.Context())
+	expiresAt, status, expiryErr := mailboxExpiresAt(reqBody.ExpiresAt, ok)
+	if expiryErr != nil {
+		WriteError(w, status, expiryErr)
+		return
+	}
+	createdByValue := uuid.NullUUID{Valid: false}
+	if ok {
+		createdByValue = uuid.NullUUID{UUID: createdBy, Valid: true}
+	}
 
-	data, err := m.queries.CreateEmailAddress(r.Context(), postgres.CreateEmailAddressParams{ID: id, Address: address, ExpiresAt: expiresAt})
+	data, err := m.queries.CreateCustomEmailAddress(r.Context(), postgres.CreateCustomEmailAddressParams{ID: id, Address: address, ExpiresAt: expiresAt, CreatedBy: createdByValue})
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusConflict, errors.New("email address already exists"))
+			return
+		}
 		WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -94,9 +106,17 @@ func (m *MailboxHandler) CreateMailbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expiresAt := time.Now().Add(24 * time.Hour)
-
 	id := uuid.New()
+	createdBy, ok := utils.DeveloperIDFromContext(r.Context())
+	expiresAt, status, expiryErr := mailboxExpiresAt(reqBody.ExpiresAt, ok)
+	if expiryErr != nil {
+		WriteError(w, status, expiryErr)
+		return
+	}
+	createdByValue := uuid.NullUUID{Valid: false}
+	if ok {
+		createdByValue = uuid.NullUUID{UUID: createdBy, Valid: true}
+	}
 
 	mb, err := m.queries.CreateEmailAddress(
 		r.Context(),
@@ -104,6 +124,7 @@ func (m *MailboxHandler) CreateMailbox(w http.ResponseWriter, r *http.Request) {
 			ID:        id,
 			Address:   address,
 			ExpiresAt: expiresAt,
+			CreatedBy: createdByValue,
 		},
 	)
 
@@ -112,7 +133,7 @@ func (m *MailboxHandler) CreateMailbox(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusNotFound, err)
 			return
 		}
-		WriteError(w,http.StatusInternalServerError,errors.New("failed to create mailbox"),)
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to create mailbox"))
 		return
 	}
 
@@ -121,4 +142,18 @@ func (m *MailboxHandler) CreateMailbox(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func mailboxExpiresAt(requested *time.Time, isDeveloper bool) (time.Time, int, error) {
+	if requested == nil {
+		return time.Now().Add(24 * time.Hour), 0, nil
+	}
 
+	if !isDeveloper {
+		return time.Time{}, http.StatusForbidden, errors.New("only developers can set expiresAt")
+	}
+
+	if !requested.After(time.Now()) {
+		return time.Time{}, http.StatusBadRequest, errors.New("expiresAt must be in the future")
+	}
+
+	return requested.UTC(), 0, nil
+}

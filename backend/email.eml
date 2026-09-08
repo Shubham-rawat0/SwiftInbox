@@ -1,0 +1,54 @@
+From: test@gmail.com
+To: makkara@temp.mail.at
+Subject: Shaks Attachment Test
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="MIXED_BOUNDARY_123"
+
+--MIXED_BOUNDARY_123
+Content-Type: multipart/alternative; boundary="ALT_BOUNDARY_456"
+
+--ALT_BOUNDARY_456
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+Hello Makkara,
+
+This email contains two attachments.
+
+Attachment 0: test.txt
+Attachment 1: test.pdf
+
+Regards,
+Shaks
+
+--ALT_BOUNDARY_456
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+<html>
+<body>
+<h1>Hello Makkara 👋</h1>
+<p>This email contains <strong>two attachments</strong>.</p>
+<p>Testing the Shaks attachment parser.</p>
+</body>
+</html>
+
+--ALT_BOUNDARY_456--
+
+--MIXED_BOUNDARY_123
+Content-Type: text/plain; name="test.txt"
+Content-Disposition: attachment; filename="test.txt"
+Content-Transfer-Encoding: base64
+
+SGVsbG8gTWFra2FyYSEKClRoaXMgaXMgYSB0ZXN0IHR4dCBhdHRhY2htZW50Lg==
+--MIXED_BOUNDARY_123
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="test.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIK
+Pj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50
+IDEKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFC
+b3ggWzAgMCA2MTIgNzkyXQo+PgplbmRvYmoKdHJhaWxlcgo8PAovUm9vdCAxIDAgUgovU2l6
+ZSA0Cj4+CnN0YXJ0eHJlZgozMjQKJSVFT0YK
+--MIXED_BOUNDARY_123--

@@ -12,32 +12,86 @@ import (
 	"github.com/google/uuid"
 )
 
+const createCustomEmailAddress = `-- name: CreateCustomEmailAddress :one
+INSERT INTO mailboxes(
+    id, address, expires_at, created_by
+)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT(address) DO NOTHING
+RETURNING address, created_at, expires_at, created_by
+`
+
+type CreateCustomEmailAddressParams struct {
+	ID        uuid.UUID
+	Address   string
+	ExpiresAt time.Time
+	CreatedBy uuid.NullUUID
+}
+
+type CreateCustomEmailAddressRow struct {
+	Address   string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	CreatedBy uuid.NullUUID
+}
+
+func (q *Queries) CreateCustomEmailAddress(ctx context.Context, arg CreateCustomEmailAddressParams) (CreateCustomEmailAddressRow, error) {
+	row := q.db.QueryRowContext(ctx, createCustomEmailAddress,
+		arg.ID,
+		arg.Address,
+		arg.ExpiresAt,
+		arg.CreatedBy,
+	)
+	var i CreateCustomEmailAddressRow
+	err := row.Scan(
+		&i.Address,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.CreatedBy,
+	)
+	return i, err
+}
+
 const createEmailAddress = `-- name: CreateEmailAddress :one
 INSERT INTO mailboxes(
-    id , address , expires_at
+    id , address , expires_at, created_by
 ) 
-VALUES ($1,$2,$3) 
+VALUES ($1,$2,$3,$4)
 ON CONFLICT(address)
-DO UPDATE SET expires_at= EXCLUDED.expires_at
-Returning address, created_at, expires_at
+DO UPDATE SET
+    expires_at = EXCLUDED.expires_at,
+    created_by = COALESCE(EXCLUDED.created_by, mailboxes.created_by)
+RETURNING address, created_at, expires_at, created_by
 `
 
 type CreateEmailAddressParams struct {
 	ID        uuid.UUID
 	Address   string
 	ExpiresAt time.Time
+	CreatedBy uuid.NullUUID
 }
 
 type CreateEmailAddressRow struct {
 	Address   string
 	CreatedAt time.Time
 	ExpiresAt time.Time
+	CreatedBy uuid.NullUUID
 }
 
 func (q *Queries) CreateEmailAddress(ctx context.Context, arg CreateEmailAddressParams) (CreateEmailAddressRow, error) {
-	row := q.db.QueryRowContext(ctx, createEmailAddress, arg.ID, arg.Address, arg.ExpiresAt)
+	row := q.db.QueryRowContext(ctx, createEmailAddress,
+		arg.ID,
+		arg.Address,
+		arg.ExpiresAt,
+		arg.CreatedBy,
+	)
 	var i CreateEmailAddressRow
-	err := row.Scan(&i.Address, &i.CreatedAt, &i.ExpiresAt)
+	err := row.Scan(
+		&i.Address,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.CreatedBy,
+	)
 	return i, err
 }
 
@@ -57,32 +111,41 @@ const upsertMailbox = `-- name: UpsertMailbox :one
 INSERT INTO mailboxes (
     id,
     address,
-    expires_at
+    expires_at,
+    created_by
 )
 VALUES (
     $1,
     $2,
-    $3
+    $3,
+    $4
 )
 ON CONFLICT (address)
 DO UPDATE SET address = EXCLUDED.address
-RETURNING id, address, created_at, expires_at
+RETURNING id, address, created_at, expires_at, created_by
 `
 
 type UpsertMailboxParams struct {
 	ID        uuid.UUID
 	Address   string
 	ExpiresAt time.Time
+	CreatedBy uuid.NullUUID
 }
 
 func (q *Queries) UpsertMailbox(ctx context.Context, arg UpsertMailboxParams) (Mailbox, error) {
-	row := q.db.QueryRowContext(ctx, upsertMailbox, arg.ID, arg.Address, arg.ExpiresAt)
+	row := q.db.QueryRowContext(ctx, upsertMailbox,
+		arg.ID,
+		arg.Address,
+		arg.ExpiresAt,
+		arg.CreatedBy,
+	)
 	var i Mailbox
 	err := row.Scan(
 		&i.ID,
 		&i.Address,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.CreatedBy,
 	)
 	return i, err
 }

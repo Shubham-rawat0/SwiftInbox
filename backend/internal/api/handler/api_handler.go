@@ -1,0 +1,141 @@
+package handler
+
+import (
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/mail"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
+	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
+)
+
+type ApiHandler struct {
+	queries *postgres.Queries
+}
+
+func NewApiHandler(q *postgres.Queries) *ApiHandler {
+	return &ApiHandler{
+		queries: q,
+	}
+}
+
+type RequestApiBody struct {
+	DeveloperId uuid.UUID `json:"developer_id"`
+}
+
+type CreateDeveloperBody struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+func (a *ApiHandler) AddApiKey(w http.ResponseWriter, r *http.Request) {
+	data := RequestApiBody{}
+
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	id := uuid.New()
+
+	apiKey, err := utils.GenerateAPIKey()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	keyHash := utils.HashAPIKey(apiKey)
+
+	api, err := a.queries.CreateApiKey(
+		r.Context(),
+		postgres.CreateApiKeyParams{
+			ID:          id,
+			DeveloperID: data.DeveloperId,
+			KeyHash:     keyHash,
+			LastUsedAt: sql.NullTime{
+				Valid: false,
+			},
+		},
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, err)
+			return
+		}
+
+		WriteError(
+			w,
+			http.StatusInternalServerError,
+			errors.New("failed to create api key"),
+		)
+		return
+	}
+
+	_, err = a.queries.IncrementUsage(
+		r.Context(),
+		data.DeveloperId,
+	)
+
+	if err != nil {
+		WriteError(
+			w,
+			http.StatusInternalServerError,
+			errors.New("failed to initialize usage"),
+		)
+		return
+	}
+
+	WriteJSON(w, http.StatusCreated, map[string]interface{}{
+		"id":      api.ID,
+		"api_key": apiKey,
+	})
+}
+
+func (a *ApiHandler) CreateDeveloper(w http.ResponseWriter, r *http.Request) {
+	var body CreateDeveloperBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	body.Name = strings.TrimSpace(body.Name)
+	body.Email = strings.TrimSpace(body.Email)
+	if body.Name == "" {
+		WriteError(w, http.StatusBadRequest, errors.New("name is required"))
+		return
+	}
+
+	address, err := mail.ParseAddress(body.Email)
+	if err != nil || address.Address != body.Email {
+		WriteError(w, http.StatusBadRequest, errors.New("valid email is required"))
+		return
+	}
+
+	developer, err := a.queries.CreateDeveloper(
+		r.Context(),
+		postgres.CreateDeveloperParams{
+			ID:    uuid.New(),
+			Name:  body.Name,
+			Email: body.Email,
+		},
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			WriteError(w, http.StatusConflict, errors.New("email is already registered"))
+			return
+		}
+
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to create developer"))
+		return
+	}
+
+	WriteJSON(w, http.StatusCreated, developer)
+}

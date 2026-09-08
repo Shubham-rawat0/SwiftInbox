@@ -11,6 +11,18 @@ WHERE address = $1
 ORDER BY created_at DESC
 LIMIT 50;
 
+-- name: GetMessage :one
+
+SELECT
+    id,
+    sender,
+    subject,
+    raw,
+    address,
+    created_at
+FROM messages
+WHERE id = $1;
+
 -- name: GetMessagesByMailboxID :many
 
 SELECT

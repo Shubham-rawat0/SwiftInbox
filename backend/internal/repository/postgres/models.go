@@ -11,11 +11,36 @@ import (
 	"github.com/google/uuid"
 )
 
+type Apikey struct {
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+	KeyHash     string
+	CreatedAt   sql.NullTime
+	LastUsedAt  sql.NullTime
+	RevokedAt   sql.NullTime
+}
+
+type Developer struct {
+	ID        uuid.UUID
+	Name      string
+	Email     string
+	CreatedAt sql.NullTime
+}
+
+type DeveloperUsage struct {
+	DeveloperID      uuid.UUID
+	Period           time.Time
+	ApiRequests      int32
+	MailboxesCreated int32
+	MessagesReceived int32
+}
+
 type Mailbox struct {
 	ID        uuid.UUID
 	Address   string
 	CreatedAt time.Time
 	ExpiresAt time.Time
+	CreatedBy uuid.NullUUID
 }
 
 type Message struct {

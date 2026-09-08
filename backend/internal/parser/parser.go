@@ -5,20 +5,22 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-message/mail"
 )
 
-type Attachment struct {
-	Filename    string
-	ContentType string
-	ContentID   string
-	Size        int
-	Data        []byte
+	type Attachment struct {
+		Filename    string
+		ContentType string
+		ContentID   string
+		Size        int
+		Index       int
+		Data        []byte
 }
 
 func ParseTextBody(raw []byte) (string, error) {
-	entity, err := message.Read(bytes.NewReader(raw))
+	entity, err := message.Read(bytes.NewReader(normalizeFinalBoundary(raw)))
 	if err != nil {
 		return "", fmt.Errorf("read email: %w", err)
 	}
@@ -50,7 +52,7 @@ func ParseTextBody(raw []byte) (string, error) {
 }
 
 func ParseHTMLBody(raw []byte) (string, error) {
-	entity, err := message.Read(bytes.NewReader(raw))
+	entity, err := message.Read(bytes.NewReader(normalizeFinalBoundary(raw)))
 	if err != nil {
 		return "", fmt.Errorf("read email: %w", err)
 	}
@@ -69,13 +71,14 @@ func ParseHTMLBody(raw []byte) (string, error) {
 }
 
 func ParseAttachments(raw []byte) ([]Attachment, error) {
-	entity, err := message.Read(bytes.NewReader(raw))
+	entity, err := message.Read(bytes.NewReader(normalizeFinalBoundary(raw)))
 	if err != nil {
 		return nil, fmt.Errorf("read email: %w", err)
 	}
 
 	var attachments []Attachment
 	if err := walk(entity, func(contentType string, params map[string]string, data []byte) error {
+		// Don't treat the normal email body as an attachment.
 		if contentType == "text/plain" || contentType == "text/html" {
 			return nil
 		}
@@ -88,6 +91,7 @@ func ParseAttachments(raw []byte) ([]Attachment, error) {
 			ContentType: contentType,
 			ContentID:   contentID,
 			Size:        len(data),
+			Index:       len(attachments),
 			Data:        data,
 		})
 		return nil
@@ -96,6 +100,28 @@ func ParseAttachments(raw []byte) ([]Attachment, error) {
 	}
 
 	return attachments, nil
+}
+
+func normalizeFinalBoundary(raw []byte) []byte {
+	if !bytes.HasSuffix(raw, []byte("\r\n")) {
+		return raw
+	}
+
+	headerEnd := bytes.Index(raw, []byte("\n\n"))
+	if headerEnd < 0 {
+		return raw
+	}
+
+	body := raw[headerEnd+2:]
+	firstLineEnd := bytes.IndexByte(body, '\n')
+	if firstLineEnd < 0 || (firstLineEnd > 0 && body[firstLineEnd-1] == '\r') {
+		return raw
+	}
+
+	normalized := make([]byte, len(raw)-1)
+	copy(normalized, raw[:len(raw)-2])
+	normalized[len(normalized)-1] = '\n'
+	return normalized
 }
 
 func walk(entity *message.Entity, fn func(contentType string, params map[string]string, data []byte) error) error {

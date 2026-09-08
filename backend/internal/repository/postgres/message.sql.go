@@ -70,6 +70,42 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 	return i, err
 }
 
+const getMessage = `-- name: GetMessage :one
+
+SELECT
+    id,
+    sender,
+    subject,
+    raw,
+    address,
+    created_at
+FROM messages
+WHERE id = $1
+`
+
+type GetMessageRow struct {
+	ID        uuid.UUID
+	Sender    string
+	Subject   sql.NullString
+	Raw       []byte
+	Address   string
+	CreatedAt time.Time
+}
+
+func (q *Queries) GetMessage(ctx context.Context, id uuid.UUID) (GetMessageRow, error) {
+	row := q.db.QueryRowContext(ctx, getMessage, id)
+	var i GetMessageRow
+	err := row.Scan(
+		&i.ID,
+		&i.Sender,
+		&i.Subject,
+		&i.Raw,
+		&i.Address,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getMessages = `-- name: GetMessages :many
 
 SELECT

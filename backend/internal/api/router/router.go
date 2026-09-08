@@ -9,13 +9,13 @@ import (
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
 )
 
-type Router struct{
-	handler  	http.Handler
+type Router struct {
+	handler http.Handler
 }
 
-func NewServerMux(queries *postgres.Queries)*Router{
+func NewServerMux(queries *postgres.Queries) *Router {
 
-	mux:=http.NewServeMux()	
+	mux := http.NewServeMux()
 
 	messageAccessLimiter := middleware.NewRateLimiter(
 		100, time.Minute,
@@ -34,25 +34,32 @@ func NewServerMux(queries *postgres.Queries)*Router{
 		"GENERAL",
 	)
 
-	messageHandler:=handler.NewMessageHandler(queries)
-	mailboxHandler:=handler.NewMailboxHandler(queries)
+	apiMiddlewarehandler := middleware.NewApiMiddlewareHandler(queries)
 
-	mux.Handle("POST /api/mailboxes/custom",mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateEmail)))
-	mux.Handle("POST /api/mailboxes",mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateMailbox)))
+	messageHandler := handler.NewMessageHandler(queries)
+	mailboxHandler := handler.NewMailboxHandler(queries)
+	apiHandler := handler.NewApiHandler(queries)
 
-	mux.Handle("POST /api/mailboxes/{address}/message",messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessages)))
+	mux.Handle("POST /api/mailboxes/custom", mailboxLimiter.Middleware(apiMiddlewarehandler.APIKey((http.HandlerFunc(mailboxHandler.CreateEmail)))))
+	mux.Handle("POST /api/mailboxes", mailboxLimiter.Middleware(apiMiddlewarehandler.APIKey(http.HandlerFunc(mailboxHandler.CreateMailbox))))
 
-	mux.Handle("GET /health",http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
-		handler.WriteJSON(w,200,"healthy")
+	mux.Handle("POST /api/mailboxes/{address}/message", messageAccessLimiter.Middleware(apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetMessages))))
+	mux.Handle("POST /api/message/{id}", messageAccessLimiter.Middleware(apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetMessage))))
+	mux.Handle("POST /api/message/{id}/attachment/{index}", messageAccessLimiter.Middleware(apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetAttachment))))
+
+	mux.Handle("POST /api/create", messageAccessLimiter.Middleware(http.HandlerFunc(apiHandler.AddApiKey)))
+	mux.Handle("POST /api/dev/create", http.HandlerFunc(apiHandler.CreateDeveloper))
+
+	mux.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler.WriteJSON(w, 200, "healthy")
 	}))
-	
-	handler:=generalLimiter.Middleware(mux)
 
-	handler=cors(handler)
+	handler := generalLimiter.Middleware(mux)
 
-	
+	handler = cors(handler)
+
 	return &Router{
-		handler: handler, 
+		handler: handler,
 	}
 }
 
