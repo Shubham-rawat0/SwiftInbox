@@ -27,6 +27,7 @@ func NewApiHandler(q *postgres.Queries) *ApiHandler {
 
 type RequestApiBody struct {
 	DeveloperId uuid.UUID `json:"developer_id"`
+	Name        string    `json:"name"`
 }
 
 type CreateDeveloperBody struct {
@@ -40,6 +41,10 @@ func (a *ApiHandler) AddApiKey(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		WriteError(w, http.StatusBadRequest, err)
 		return
+	}
+	data.Name = strings.TrimSpace(data.Name)
+	if data.Name == "" {
+		data.Name = "default"
 	}
 
 	id := uuid.New()
@@ -57,6 +62,7 @@ func (a *ApiHandler) AddApiKey(w http.ResponseWriter, r *http.Request) {
 		postgres.CreateApiKeyParams{
 			ID:          id,
 			DeveloperID: data.DeveloperId,
+			Name:        data.Name,
 			KeyHash:     keyHash,
 			LastUsedAt: sql.NullTime{
 				Valid: false,
@@ -80,6 +86,7 @@ func (a *ApiHandler) AddApiKey(w http.ResponseWriter, r *http.Request) {
 
 	WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"id":      api.ID,
+		"name":    api.Name,
 		"api_key": apiKey,
 	})
 }
@@ -127,21 +134,13 @@ func (a *ApiHandler) CreateDeveloper(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *ApiHandler) RevokeApiKey(w http.ResponseWriter, r *http.Request) {
-	idValue := r.Context().Value("api_key_id")
-
-	id, ok := idValue.(string)
+	id, ok := utils.APIKeyIDFromContext(r.Context())
 	if !ok {
 		WriteError(w, http.StatusInternalServerError, errors.New("invalid api key id"))
 		return
 	}
 
-	uuidID, err := uuid.Parse(id)
-	if err != nil {
-		WriteError(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	data, err := a.queries.RevokeApiKey(r.Context(), uuidID)
+	data, err := a.queries.RevokeApiKey(r.Context(), id)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err)
 		return

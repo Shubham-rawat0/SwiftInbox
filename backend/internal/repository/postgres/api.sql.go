@@ -16,16 +16,18 @@ const createApiKey = `-- name: CreateApiKey :one
 INSERT INTO apikeys (
     id ,
     developer_id,
+    name,
     key_hash,
     last_used_at,
     revoked_at 
-) VALUES ($1,$2,$3,$4,$5)
-RETURNING id, developer_id, key_hash
+) VALUES ($1,$2,$3,$4,$5,$6)
+RETURNING id, developer_id, name, key_hash
 `
 
 type CreateApiKeyParams struct {
 	ID          uuid.UUID
 	DeveloperID uuid.UUID
+	Name        string
 	KeyHash     string
 	LastUsedAt  sql.NullTime
 	RevokedAt   sql.NullTime
@@ -34,6 +36,7 @@ type CreateApiKeyParams struct {
 type CreateApiKeyRow struct {
 	ID          uuid.UUID
 	DeveloperID uuid.UUID
+	Name        string
 	KeyHash     string
 }
 
@@ -41,22 +44,29 @@ func (q *Queries) CreateApiKey(ctx context.Context, arg CreateApiKeyParams) (Cre
 	row := q.db.QueryRowContext(ctx, createApiKey,
 		arg.ID,
 		arg.DeveloperID,
+		arg.Name,
 		arg.KeyHash,
 		arg.LastUsedAt,
 		arg.RevokedAt,
 	)
 	var i CreateApiKeyRow
-	err := row.Scan(&i.ID, &i.DeveloperID, &i.KeyHash)
+	err := row.Scan(
+		&i.ID,
+		&i.DeveloperID,
+		&i.Name,
+		&i.KeyHash,
+	)
 	return i, err
 }
 
 const getApiKey = `-- name: GetApiKey :one
-SELECT id, developer_id , last_used_at ,revoked_at from apikeys where key_hash =$1
+SELECT id, developer_id, name, last_used_at, revoked_at from apikeys where key_hash =$1
 `
 
 type GetApiKeyRow struct {
 	ID          uuid.UUID
 	DeveloperID uuid.UUID
+	Name        string
 	LastUsedAt  sql.NullTime
 	RevokedAt   sql.NullTime
 }
@@ -67,6 +77,7 @@ func (q *Queries) GetApiKey(ctx context.Context, keyHash string) (GetApiKeyRow, 
 	err := row.Scan(
 		&i.ID,
 		&i.DeveloperID,
+		&i.Name,
 		&i.LastUsedAt,
 		&i.RevokedAt,
 	)
@@ -74,7 +85,10 @@ func (q *Queries) GetApiKey(ctx context.Context, keyHash string) (GetApiKeyRow, 
 }
 
 const revokeApiKey = `-- name: RevokeApiKey :one
-DELETE FROM apikeys WHERE id=$1 RETURNING id,last_used_at, revoked_at
+UPDATE apikeys
+SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP)
+WHERE id = $1
+RETURNING id, last_used_at, revoked_at
 `
 
 type RevokeApiKeyRow struct {

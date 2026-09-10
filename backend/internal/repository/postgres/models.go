@@ -18,6 +18,7 @@ type Apikey struct {
 	CreatedAt   sql.NullTime
 	LastUsedAt  sql.NullTime
 	RevokedAt   sql.NullTime
+	Name        string
 }
 
 type Developer struct {

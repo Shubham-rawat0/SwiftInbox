@@ -50,7 +50,7 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("POST /api/message/{id}/attachment/{index}", messageAccessLimiter.Middleware(utils.WithUsage("attachment.get", apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetAttachment)))))
 
 	mux.Handle("POST /api/create", messageAccessLimiter.Middleware(http.HandlerFunc(apiHandler.AddApiKey)))
-	mux.Handle("DELETE /api/revoke", messageAccessLimiter.Middleware(http.HandlerFunc(apiHandler.RevokeApiKey)))
+	mux.Handle("DELETE /api/revoke", messageAccessLimiter.Middleware(apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(apiHandler.RevokeApiKey))))
 	mux.Handle("POST /api/dev/create", http.HandlerFunc(apiHandler.CreateDeveloper))
 
 	mux.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

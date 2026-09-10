@@ -10,6 +10,7 @@ import (
 type contextKey string
 
 const developerIDKey contextKey = "developer_id"
+const apiKeyIDKey contextKey = "api_key_id"
 
 func WithDeveloperID(ctx context.Context, developerID uuid.UUID) context.Context {
 	return context.WithValue(ctx, developerIDKey, developerID)
@@ -18,6 +19,15 @@ func WithDeveloperID(ctx context.Context, developerID uuid.UUID) context.Context
 func DeveloperIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	developerID, ok := ctx.Value(developerIDKey).(uuid.UUID)
 	return developerID, ok
+}
+
+func WithAPIKeyID(ctx context.Context, apiKeyID uuid.UUID) context.Context {
+	return context.WithValue(ctx, apiKeyIDKey, apiKeyID)
+}
+
+func APIKeyIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+	apiKeyID, ok := ctx.Value(apiKeyIDKey).(uuid.UUID)
+	return apiKeyID, ok
 }
 
 var usageCosts = map[string]int{

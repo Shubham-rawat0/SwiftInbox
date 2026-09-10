@@ -23,12 +23,6 @@ func NewApiMiddlewareHandler(q *postgres.Queries) *ApiKeyMiddleware {
 	}
 }
 
-const (
-	apiKeyIDKey contextKey = "api_key_id"
-)
-
-type contextKey string
-
 func (a *ApiKeyMiddleware) APIKey(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -107,11 +101,7 @@ func (a *ApiKeyMiddleware) RequireAPIKey(next http.Handler) http.Handler {
 
 		ctx := utils.WithDeveloperID(r.Context(), data.DeveloperID)
 
-		ctx = context.WithValue(
-			ctx,
-			apiKeyIDKey,
-			data.ID,
-		)
+		ctx = utils.WithAPIKeyID(ctx, data.ID)
 
 		if err := a.recordUsage(ctx); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
