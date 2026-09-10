@@ -78,20 +78,6 @@ func (a *ApiHandler) AddApiKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = a.queries.IncrementUsage(
-		r.Context(),
-		data.DeveloperId,
-	)
-
-	if err != nil {
-		WriteError(
-			w,
-			http.StatusInternalServerError,
-			errors.New("failed to initialize usage"),
-		)
-		return
-	}
-
 	WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"id":      api.ID,
 		"api_key": apiKey,
@@ -138,4 +124,28 @@ func (a *ApiHandler) CreateDeveloper(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusCreated, developer)
+}
+
+func (a *ApiHandler) RevokeApiKey(w http.ResponseWriter, r *http.Request) {
+	idValue := r.Context().Value("api_key_id")
+
+	id, ok := idValue.(string)
+	if !ok {
+		WriteError(w, http.StatusInternalServerError, errors.New("invalid api key id"))
+		return
+	}
+
+	uuidID, err := uuid.Parse(id)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	data, err := a.queries.RevokeApiKey(r.Context(), uuidID)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	WriteJSON(w,http.StatusOK,data)
 }

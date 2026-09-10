@@ -21,6 +21,13 @@ type RequestEmailBody struct {
 	ExpiresAt *time.Time `json:"expiresAt"`
 }
 
+type mailboxResponse struct {
+	Address   string        `json:"address"`
+	CreatedAt time.Time     `json:"createdAt"`
+	ExpiresAt time.Time     `json:"expiresAt"`
+	CreatedBy uuid.NullUUID `json:"createdBy"`
+}
+
 func NewMailboxHandler(q *postgres.Queries) *MailboxHandler {
 	return &MailboxHandler{
 		queries: q,
@@ -75,7 +82,12 @@ func (m *MailboxHandler) CreateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSON(w, http.StatusCreated, data)
+	WriteJSON(w, http.StatusCreated, mailboxResponse{
+		Address:   data.Address,
+		CreatedAt: data.CreatedAt,
+		ExpiresAt: data.ExpiresAt,
+		CreatedBy: data.CreatedBy,
+	})
 }
 
 func (m *MailboxHandler) CreateMailbox(w http.ResponseWriter, r *http.Request) {
@@ -137,8 +149,52 @@ func (m *MailboxHandler) CreateMailbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	WriteJSON(w, http.StatusCreated, mailboxResponse{
+		Address:   mb.Address,
+		CreatedAt: mb.CreatedAt,
+		ExpiresAt: mb.ExpiresAt,
+		CreatedBy: mb.CreatedBy,
+	})
+}
+
+func (m *MailboxHandler) DeleteMailbox(w http.ResponseWriter, r *http.Request) {
+	address := r.PathValue("address")
+	if address == "" {
+		WriteError(w, http.StatusBadRequest, errors.New("address is required"))
+	}
+	address = utils.NormalizeAddress(address)
+	if !utils.IsOurDomain(address) {
+		WriteError(
+			w,
+			http.StatusBadRequest,
+			errors.New("wrong domain"),
+		)
+		return
+	}
+	developerID, ok := utils.DeveloperIDFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, errors.New("api key required"))
+		return
+	}
+
+	mb, err := m.queries.DeleteMailbox(r.Context(), postgres.DeleteMailboxParams{
+		Address:   address,
+		CreatedBy: uuid.NullUUID{UUID: developerID, Valid: true},
+	})
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to delete mailbox"))
+		return
+	}
+
 	WriteJSON(w, http.StatusCreated, map[string]string{
+		"message": "mailbox deleted",
 		"address": mb.Address,
+		"id":      mb.ID.String(),
 	})
 }
 

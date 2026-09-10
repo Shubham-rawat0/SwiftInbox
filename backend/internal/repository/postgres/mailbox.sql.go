@@ -95,6 +95,29 @@ func (q *Queries) CreateEmailAddress(ctx context.Context, arg CreateEmailAddress
 	return i, err
 }
 
+const deleteMailbox = `-- name: DeleteMailbox :one
+DELETE FROM mailboxes
+WHERE address = $1 AND created_by = $2
+RETURNING id, address
+`
+
+type DeleteMailboxParams struct {
+	Address   string
+	CreatedBy uuid.NullUUID
+}
+
+type DeleteMailboxRow struct {
+	ID      uuid.UUID
+	Address string
+}
+
+func (q *Queries) DeleteMailbox(ctx context.Context, arg DeleteMailboxParams) (DeleteMailboxRow, error) {
+	row := q.db.QueryRowContext(ctx, deleteMailbox, arg.Address, arg.CreatedBy)
+	var i DeleteMailboxRow
+	err := row.Scan(&i.ID, &i.Address)
+	return i, err
+}
+
 const getMailboxId = `-- name: GetMailboxId :one
 SELECT id from mailboxes where address=$1
 `

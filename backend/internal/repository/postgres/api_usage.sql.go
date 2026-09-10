@@ -12,31 +12,53 @@ import (
 )
 
 const incrementUsage = `-- name: IncrementUsage :one
-INSERT INTO developer_usage (
-    developer_id,
-    period,
-    api_requests
-)
-VALUES (
-    $1,
-    DATE_TRUNC('month', CURRENT_DATE)::DATE,
-    1
-)
+INSERT INTO developer_usage (developer_id, period, api_requests, mailboxes_created, messages_received)
+SELECT $1, DATE_TRUNC('month', CURRENT_DATE)::DATE, $2,
+             CASE WHEN $3 = 'mailbox' THEN $2 ELSE 0 END,
+             CASE WHEN $3 = 'message' THEN $2 ELSE 0 END
+FROM developer
+WHERE id = $1
+    AND $2 <= api_quota
+  AND (
+            ($3 = 'mailbox' AND $2 <= mailbox_quota)
+            OR ($3 = 'message' AND $2 <= message_quota)
+            OR ($3 = 'api')
+  )
 ON CONFLICT (developer_id, period)
 DO UPDATE SET
-    api_requests = developer_usage.api_requests + 1
-RETURNING developer_id, period, api_requests, mailboxes_created, messages_received
+    api_requests = developer_usage.api_requests + EXCLUDED.api_requests,
+    mailbox_requests = developer_usage.mailbox_requests + EXCLUDED.mailbox_requests,
+    messages_requests = developer_usage.messages_requests + EXCLUDED.messages_requests
+WHERE developer_usage.api_requests + EXCLUDED.api_requests <= (
+          SELECT api_quota FROM developer WHERE id = $1
+      )
+  AND (
+      ($3 = 'mailbox' AND developer_usage.mailbox_requests + EXCLUDED.mailbox_requests <= (
+          SELECT mailbox_quota FROM developer WHERE id = $1
+      ))
+      OR ($3 = 'message' AND developer_usage.messages_requests + EXCLUDED.messages_requests <= (
+          SELECT message_quota FROM developer WHERE id = $1
+      ))
+      OR ($3 = 'api')
+  )
+RETURNING developer_id, period, api_requests, mailbox_requests, messages_requests
 `
 
-func (q *Queries) IncrementUsage(ctx context.Context, developerID uuid.UUID) (DeveloperUsage, error) {
-	row := q.db.QueryRowContext(ctx, incrementUsage, developerID)
+type IncrementUsageParams struct {
+	DeveloperID uuid.UUID
+	ApiRequests int32
+	Category    interface{}
+}
+
+func (q *Queries) IncrementUsage(ctx context.Context, arg IncrementUsageParams) (DeveloperUsage, error) {
+	row := q.db.QueryRowContext(ctx, incrementUsage, arg.DeveloperID, arg.ApiRequests, arg.Category)
 	var i DeveloperUsage
 	err := row.Scan(
 		&i.DeveloperID,
 		&i.Period,
 		&i.ApiRequests,
-		&i.MailboxesCreated,
-		&i.MessagesReceived,
+		&i.MailboxRequests,
+		&i.MessagesRequests,
 	)
 	return i, err
 }

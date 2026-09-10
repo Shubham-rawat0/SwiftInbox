@@ -7,6 +7,7 @@ import (
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/handler"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/middleware"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
+	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
 )
 
 type Router struct {
@@ -40,14 +41,16 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mailboxHandler := handler.NewMailboxHandler(queries)
 	apiHandler := handler.NewApiHandler(queries)
 
-	mux.Handle("POST /api/mailboxes/custom", mailboxLimiter.Middleware(apiMiddlewarehandler.APIKey((http.HandlerFunc(mailboxHandler.CreateEmail)))))
-	mux.Handle("POST /api/mailboxes", mailboxLimiter.Middleware(apiMiddlewarehandler.APIKey(http.HandlerFunc(mailboxHandler.CreateMailbox))))
+	mux.Handle("POST /api/mailboxes/custom", mailboxLimiter.Middleware(utils.WithUsage("mailbox.create", apiMiddlewarehandler.APIKey(http.HandlerFunc(mailboxHandler.CreateEmail)))))
+	mux.Handle("POST /api/mailboxes", mailboxLimiter.Middleware(utils.WithUsage("mailbox.create", apiMiddlewarehandler.APIKey(http.HandlerFunc(mailboxHandler.CreateMailbox)))))
+	mux.Handle("DELETE /api/mailboxes/{address}", mailboxLimiter.Middleware(utils.WithUsage("mailbox.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.DeleteMailbox)))))
 
-	mux.Handle("POST /api/mailboxes/{address}/message", messageAccessLimiter.Middleware(apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetMessages))))
-	mux.Handle("POST /api/message/{id}", messageAccessLimiter.Middleware(apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetMessage))))
-	mux.Handle("POST /api/message/{id}/attachment/{index}", messageAccessLimiter.Middleware(apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetAttachment))))
+	mux.Handle("POST /api/mailboxes/{address}/message", messageAccessLimiter.Middleware(utils.WithUsage("message.list", apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetMessages)))))
+	mux.Handle("POST /api/message/{id}", messageAccessLimiter.Middleware(utils.WithUsage("message.get", apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetMessage)))))
+	mux.Handle("POST /api/message/{id}/attachment/{index}", messageAccessLimiter.Middleware(utils.WithUsage("attachment.get", apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetAttachment)))))
 
 	mux.Handle("POST /api/create", messageAccessLimiter.Middleware(http.HandlerFunc(apiHandler.AddApiKey)))
+	mux.Handle("DELETE /api/revoke", messageAccessLimiter.Middleware(http.HandlerFunc(apiHandler.RevokeApiKey)))
 	mux.Handle("POST /api/dev/create", http.HandlerFunc(apiHandler.CreateDeveloper))
 
 	mux.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

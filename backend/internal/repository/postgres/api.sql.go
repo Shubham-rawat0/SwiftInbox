@@ -72,3 +72,20 @@ func (q *Queries) GetApiKey(ctx context.Context, keyHash string) (GetApiKeyRow, 
 	)
 	return i, err
 }
+
+const revokeApiKey = `-- name: RevokeApiKey :one
+DELETE FROM apikeys WHERE id=$1 RETURNING id,last_used_at, revoked_at
+`
+
+type RevokeApiKeyRow struct {
+	ID         uuid.UUID
+	LastUsedAt sql.NullTime
+	RevokedAt  sql.NullTime
+}
+
+func (q *Queries) RevokeApiKey(ctx context.Context, id uuid.UUID) (RevokeApiKeyRow, error) {
+	row := q.db.QueryRowContext(ctx, revokeApiKey, id)
+	var i RevokeApiKeyRow
+	err := row.Scan(&i.ID, &i.LastUsedAt, &i.RevokedAt)
+	return i, err
+}

@@ -21,18 +21,21 @@ type Apikey struct {
 }
 
 type Developer struct {
-	ID        uuid.UUID
-	Name      string
-	Email     string
-	CreatedAt sql.NullTime
+	ID           uuid.UUID
+	Name         string
+	Email        string
+	CreatedAt    sql.NullTime
+	ApiQuota     int32
+	MailboxQuota int32
+	MessageQuota int32
 }
 
 type DeveloperUsage struct {
 	DeveloperID      uuid.UUID
 	Period           time.Time
 	ApiRequests      int32
-	MailboxesCreated int32
-	MessagesReceived int32
+	MailboxRequests  int32
+	MessagesRequests int32
 }
 
 type Mailbox struct {
