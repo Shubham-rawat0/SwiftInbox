@@ -35,6 +35,10 @@ type CreateDeveloperBody struct {
 	Email string `json:"email"`
 }
 
+type GetApiKeyBody struct{
+	DeveloperId uuid.UUID `json:"developer_id"`
+}
+
 func (a *ApiHandler) AddApiKey(w http.ResponseWriter, r *http.Request) {
 	data := RequestApiBody{}
 
@@ -146,5 +150,20 @@ func (a *ApiHandler) RevokeApiKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	WriteJSON(w,http.StatusOK,data)
+}
+
+func (a *ApiHandler) GetApiKey(w http.ResponseWriter, r *http.Request) {
+	var reqBody GetApiKeyBody;
+	err:=json.NewDecoder(r.Body).Decode(&reqBody)
+	if err!=nil{
+		WriteError(w,http.StatusBadRequest,err)
+		return
+	}
+	data, err := a.queries.GetUserApiKeys(r.Context(), reqBody.DeveloperId)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
 	WriteJSON(w,http.StatusOK,data)
 }

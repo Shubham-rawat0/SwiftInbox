@@ -84,6 +84,47 @@ func (q *Queries) GetApiKey(ctx context.Context, keyHash string) (GetApiKeyRow, 
 	return i, err
 }
 
+const getUserApiKeys = `-- name: GetUserApiKeys :many
+SELECT id,name,last_used_at,revoked_at,created_at from apikeys where developer_id=$1
+`
+
+type GetUserApiKeysRow struct {
+	ID         uuid.UUID
+	Name       string
+	LastUsedAt sql.NullTime
+	RevokedAt  sql.NullTime
+	CreatedAt  sql.NullTime
+}
+
+func (q *Queries) GetUserApiKeys(ctx context.Context, developerID uuid.UUID) ([]GetUserApiKeysRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUserApiKeys, developerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserApiKeysRow
+	for rows.Next() {
+		var i GetUserApiKeysRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.LastUsedAt,
+			&i.RevokedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const revokeApiKey = `-- name: RevokeApiKey :one
 UPDATE apikeys
 SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP)
