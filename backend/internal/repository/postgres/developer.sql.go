@@ -7,6 +7,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -36,5 +37,52 @@ func (q *Queries) CreateDeveloper(ctx context.Context, arg CreateDeveloperParams
 	row := q.db.QueryRowContext(ctx, createDeveloper, arg.ID, arg.Name, arg.Email)
 	var i CreateDeveloperRow
 	err := row.Scan(&i.ID, &i.Name, &i.Email)
+	return i, err
+}
+
+const getDeveloper = `-- name: GetDeveloper :one
+SELECT
+    d.name,
+    d.email,
+    d.api_quota,
+    d.mailbox_quota,
+    d.message_quota,
+    d.created_at,
+    du.api_requests,
+    du.mailbox_requests,
+    du.messages_requests
+FROM developer d
+JOIN developer_usage du
+    ON d.id = du.developer_id
+WHERE d.id = $1
+  AND du.period = DATE_TRUNC('month', CURRENT_DATE)::DATE
+`
+
+type GetDeveloperRow struct {
+	Name             string
+	Email            string
+	ApiQuota         int32
+	MailboxQuota     int32
+	MessageQuota     int32
+	CreatedAt        sql.NullTime
+	ApiRequests      int32
+	MailboxRequests  int32
+	MessagesRequests int32
+}
+
+func (q *Queries) GetDeveloper(ctx context.Context, id uuid.UUID) (GetDeveloperRow, error) {
+	row := q.db.QueryRowContext(ctx, getDeveloper, id)
+	var i GetDeveloperRow
+	err := row.Scan(
+		&i.Name,
+		&i.Email,
+		&i.ApiQuota,
+		&i.MailboxQuota,
+		&i.MessageQuota,
+		&i.CreatedAt,
+		&i.ApiRequests,
+		&i.MailboxRequests,
+		&i.MessagesRequests,
+	)
 	return i, err
 }
