@@ -95,6 +95,21 @@ func (q *Queries) CreateEmailAddress(ctx context.Context, arg CreateEmailAddress
 	return i, err
 }
 
+const deleteExpiredMailbox = `-- name: DeleteExpiredMailbox :one
+WITH deleted AS (
+    DELETE FROM mailboxes 
+    WHERE expires_at<$1 RETURNING id
+)
+SELECT COUNT(*)::INT as deleted_count FROM deleted
+`
+
+func (q *Queries) DeleteExpiredMailbox(ctx context.Context, expiresAt time.Time) (int32, error) {
+	row := q.db.QueryRowContext(ctx, deleteExpiredMailbox, expiresAt)
+	var deleted_count int32
+	err := row.Scan(&deleted_count)
+	return deleted_count, err
+}
+
 const deleteMailbox = `-- name: DeleteMailbox :one
 DELETE FROM mailboxes
 WHERE address = $1 AND created_by = $2
