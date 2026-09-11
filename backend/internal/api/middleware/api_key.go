@@ -123,6 +123,11 @@ func (a *ApiKeyMiddleware) recordUsage(ctx context.Context) error {
 		return nil
 	}
 
+	apiKeyID, ok := utils.APIKeyIDFromContext(ctx)
+	if !ok {
+		return nil
+	}
+
 	operation, cost, ok := utils.UsageOperation(ctx)
 	if !ok {
 		return nil
@@ -130,6 +135,15 @@ func (a *ApiKeyMiddleware) recordUsage(ctx context.Context) error {
 
 	_, err := a.queries.IncrementUsage(ctx, postgres.IncrementUsageParams{
 		DeveloperID: developerID,
+		ApiRequests: int32(cost),
+		Category:    utils.UsageCategory(operation),
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = a.queries.IncrementApiKeyUsage(ctx, postgres.IncrementApiKeyUsageParams{
+		ApiKeyID:    apiKeyID,
 		ApiRequests: int32(cost),
 		Category:    utils.UsageCategory(operation),
 	})

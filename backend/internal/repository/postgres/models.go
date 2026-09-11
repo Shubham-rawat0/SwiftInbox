@@ -11,6 +11,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type ApiKeyUsage struct {
+	ApiKeyID        uuid.UUID
+	Period          time.Time
+	ApiRequests     int32
+	MailboxRequests int32
+	MessageRequests int32
+}
+
 type Apikey struct {
 	ID          uuid.UUID
 	DeveloperID uuid.UUID

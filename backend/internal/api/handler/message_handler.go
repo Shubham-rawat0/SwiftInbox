@@ -148,10 +148,10 @@ func (m *MessageHandler) GetMessage(w http.ResponseWriter, r *http.Request) {
 	parsedMessage:=ParsedMessage{
 		ID: data.ID,
 		From      :data.Sender,
-    Subject   :data.Subject.String,
-    Body      :data.Raw,
-    CreatedAt  :data.CreatedAt,
-    Mailbox    :data.Address,	}
+		Subject   :data.Subject.String,
+		Body      :data.Raw,
+		CreatedAt  :data.CreatedAt,
+		Mailbox    :data.Address,	}
 
 	parseBody,err:=parser.ParseEmail(data.Raw)
 	if err!=nil{

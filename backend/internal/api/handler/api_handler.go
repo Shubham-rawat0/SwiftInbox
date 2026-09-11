@@ -167,3 +167,12 @@ func (a *ApiHandler) GetApiKey(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w,http.StatusOK,data)
 }
+
+func (a *ApiHandler) GetApiUsage(w http.ResponseWriter, r *http.Request){
+	var reqBody GetApiKeyBody;
+	err:=json.NewDecoder(r.Body).Decode(&reqBody)
+	if err!=nil{
+		WriteError(w,http.StatusBadRequest,err)
+		return
+	}
+}
