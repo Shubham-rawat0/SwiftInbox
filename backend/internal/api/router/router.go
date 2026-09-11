@@ -53,7 +53,8 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("POST /api/create", messageAccessLimiter.Middleware(http.HandlerFunc(apiHandler.AddApiKey)))
 	mux.Handle("DELETE /api/revoke", messageAccessLimiter.Middleware(apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(apiHandler.RevokeApiKey))))
 	mux.Handle("POST /api/dev/create", http.HandlerFunc(developerHandler.CreateDeveloper))
-	mux.Handle("GET /api/keys", http.HandlerFunc(apiHandler.GetApiKey))
+	mux.Handle("GET /api/dev/{id}", http.HandlerFunc(developerHandler.GetDeveloper))
+	mux.Handle("GET /api/dev/{id}/keys", http.HandlerFunc(apiHandler.GetApiKeyUsage))
 
 	mux.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSON(w, 200, "healthy")

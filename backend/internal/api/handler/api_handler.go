@@ -110,14 +110,15 @@ func (a *ApiHandler) RevokeApiKey(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w,http.StatusOK,data)
 }
 
-func (a *ApiHandler) GetApiKey(w http.ResponseWriter, r *http.Request) {
-	var reqBody GetApiKeyBody;
-	err:=json.NewDecoder(r.Body).Decode(&reqBody)
-	if err!=nil{
-		WriteError(w,http.StatusBadRequest,err)
-		return
-	}
-	data, err := a.queries.GetUserApiKeys(r.Context(), reqBody.DeveloperId)
+func (a *ApiHandler) GetApiKeyUsage(w http.ResponseWriter, r *http.Request) {	
+	id := r.PathValue("id")
+    devID, err := uuid.Parse(id)
+    if err != nil {
+        WriteError(w, http.StatusBadRequest, errors.New("invalid developer ID"))
+        return
+    }
+
+	data, err := a.queries.GetUserApiKeys(r.Context(), devID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err)
 		return

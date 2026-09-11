@@ -19,4 +19,19 @@ WHERE id = $1
 RETURNING id, last_used_at, revoked_at;
 
 -- name: GetUserApiKeys :many
-SELECT id,name,last_used_at,revoked_at,created_at from apikeys where developer_id=$1;
+
+SELECT
+    a.id,
+    a.name,
+    a.last_used_at,
+    a.revoked_at,
+    a.created_at,
+    COALESCE(b.api_requests, 0) AS api_requests,
+    COALESCE(b.mailbox_requests, 0) AS mailbox_requests,
+    COALESCE(b.message_requests, 0) AS message_requests
+FROM apikeys a
+LEFT JOIN api_key_usage b
+    ON b.api_key_id = a.id
+   AND b.period = DATE_TRUNC('month', CURRENT_DATE)::DATE
+WHERE a.developer_id = $1;
+

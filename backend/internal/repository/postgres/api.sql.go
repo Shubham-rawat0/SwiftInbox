@@ -85,15 +85,32 @@ func (q *Queries) GetApiKey(ctx context.Context, keyHash string) (GetApiKeyRow, 
 }
 
 const getUserApiKeys = `-- name: GetUserApiKeys :many
-SELECT id,name,last_used_at,revoked_at,created_at from apikeys where developer_id=$1
+
+SELECT
+    a.id,
+    a.name,
+    a.last_used_at,
+    a.revoked_at,
+    a.created_at,
+    COALESCE(b.api_requests, 0) AS api_requests,
+    COALESCE(b.mailbox_requests, 0) AS mailbox_requests,
+    COALESCE(b.message_requests, 0) AS message_requests
+FROM apikeys a
+LEFT JOIN api_key_usage b
+    ON b.api_key_id = a.id
+   AND b.period = DATE_TRUNC('month', CURRENT_DATE)::DATE
+WHERE a.developer_id = $1
 `
 
 type GetUserApiKeysRow struct {
-	ID         uuid.UUID
-	Name       string
-	LastUsedAt sql.NullTime
-	RevokedAt  sql.NullTime
-	CreatedAt  sql.NullTime
+	ID              uuid.UUID
+	Name            string
+	LastUsedAt      sql.NullTime
+	RevokedAt       sql.NullTime
+	CreatedAt       sql.NullTime
+	ApiRequests     int32
+	MailboxRequests int32
+	MessageRequests int32
 }
 
 func (q *Queries) GetUserApiKeys(ctx context.Context, developerID uuid.UUID) ([]GetUserApiKeysRow, error) {
@@ -111,6 +128,9 @@ func (q *Queries) GetUserApiKeys(ctx context.Context, developerID uuid.UUID) ([]
 			&i.LastUsedAt,
 			&i.RevokedAt,
 			&i.CreatedAt,
+			&i.ApiRequests,
+			&i.MailboxRequests,
+			&i.MessageRequests,
 		); err != nil {
 			return nil, err
 		}
