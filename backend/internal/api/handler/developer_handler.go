@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -64,6 +65,25 @@ func (a *DeveloperHandler) CreateDeveloper(w http.ResponseWriter, r *http.Reques
 	WriteJSON(w, http.StatusCreated, developer)
 }
 
-func (a *DeveloperHandler) GetDeveloper(w http.ResponseWriter, r *http.Request){
-	
+func (a *DeveloperHandler) GetDeveloper(w http.ResponseWriter, r *http.Request) {
+    id := r.PathValue("id")
+
+    devID, err := uuid.Parse(id)
+    if err != nil {
+        WriteError(w, http.StatusBadRequest, errors.New("invalid developer ID"))
+        return
+    }
+
+    data, err := a.queries.GetDeveloper(r.Context(), devID)
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            WriteError(w, http.StatusNotFound, errors.New("developer not found"))
+            return
+        }
+
+        WriteError(w, http.StatusInternalServerError, errors.New("failed to get developer"))
+        return
+    }
+
+    WriteJSON(w, http.StatusOK, data)
 }

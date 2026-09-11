@@ -41,6 +41,7 @@ func (q *Queries) CreateDeveloper(ctx context.Context, arg CreateDeveloperParams
 }
 
 const getDeveloper = `-- name: GetDeveloper :one
+
 SELECT
     d.name,
     d.email,
@@ -48,14 +49,14 @@ SELECT
     d.mailbox_quota,
     d.message_quota,
     d.created_at,
-    du.api_requests,
-    du.mailbox_requests,
-    du.messages_requests
+    COALESCE(du.api_requests, 0) AS api_requests,
+    COALESCE(du.mailbox_requests, 0) AS mailbox_requests,
+    COALESCE(du.messages_requests, 0) AS messages_requests
 FROM developer d
-JOIN developer_usage du
+LEFT JOIN developer_usage du
     ON d.id = du.developer_id
+   AND du.period = DATE_TRUNC('month', CURRENT_DATE)::DATE
 WHERE d.id = $1
-  AND du.period = DATE_TRUNC('month', CURRENT_DATE)::DATE
 `
 
 type GetDeveloperRow struct {
