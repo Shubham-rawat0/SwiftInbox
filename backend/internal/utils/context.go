@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -37,6 +38,10 @@ var usageCosts = map[string]int{
 	"attachment.list": 3,
 	"attachment.get":  2,
 	"mailbox.delete":  1,
+	"webhook.create":  5,
+	"webhook.get":     1,
+	"webhook.test":    2,
+	"webhook.delete":  1,
 }
 
 const usageOperationKey contextKey = "usageOperation"
@@ -79,4 +84,15 @@ func WithUsage(operation string, next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+var validEvents = map[string]bool{"email.received": true, "email.deleted": true, "mailbox.created": true, "mailbox.expired": true}
+
+func ValidateEvents(events []string) error {
+	for _, event := range events {
+		if !validEvents[event] {
+			return fmt.Errorf("unsupported webhook event: %s", event)
+		}
+	}
+	return nil
 }

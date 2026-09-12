@@ -65,3 +65,14 @@ type Message struct {
 	Raw       []byte
 	Address   string
 }
+
+type Webhook struct {
+	ID              uuid.UUID
+	DeveloperID     uuid.UUID
+	Url             string
+	SecretEncrypted string
+	Events          []string
+	IsActive        bool
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}

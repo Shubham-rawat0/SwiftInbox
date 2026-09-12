@@ -40,7 +40,8 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	messageHandler := handler.NewMessageHandler(queries)
 	mailboxHandler := handler.NewMailboxHandler(queries)
 	apiHandler := handler.NewApiHandler(queries)
-	developerHandler:=handler.NewDeveloperHandler(queries)
+	developerHandler := handler.NewDeveloperHandler(queries)
+	webhookHandler := handler.NewWebhookHandler(queries)
 
 	mux.Handle("POST /api/mailboxes/custom", mailboxLimiter.Middleware(utils.WithUsage("mailbox.create", apiMiddlewarehandler.APIKey(http.HandlerFunc(mailboxHandler.CreateEmail)))))
 	mux.Handle("POST /api/mailboxes", mailboxLimiter.Middleware(utils.WithUsage("mailbox.create", apiMiddlewarehandler.APIKey(http.HandlerFunc(mailboxHandler.CreateMailbox)))))
@@ -55,6 +56,13 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("POST /api/dev/create", http.HandlerFunc(developerHandler.CreateDeveloper))
 	mux.Handle("GET /api/dev/{id}", http.HandlerFunc(developerHandler.GetDeveloper))
 	mux.Handle("GET /api/dev/{id}/keys", http.HandlerFunc(apiHandler.GetApiKeyUsage))
+
+	mux.Handle("POST /api/webhooks/create", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.CreateWebhook))))
+	mux.Handle("POST /api/webhook/create", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.CreateWebhook))))
+	mux.Handle("GET /api/webhooks", utils.WithUsage("webhook.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.ListWebhooks))))
+	mux.Handle("GET /api/webhooks/{id}", utils.WithUsage("webhook.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.GetWebhook))))
+	mux.Handle("POST /api/webhooks/{id}/test", utils.WithUsage("webhook.test", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.TestWebhook))))
+	mux.Handle("DELETE /api/webhooks/{id}", utils.WithUsage("webhook.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.DeleteWebhook))))
 
 	mux.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSON(w, 200, "healthy")

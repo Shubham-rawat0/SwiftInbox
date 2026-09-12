@@ -1,25 +1,25 @@
 package main
 
-import (
-	"context"
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
-	internal "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/router"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/cleanup"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/database"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/smtp"
-	"github.com/joho/godotenv"
-)
+import ("context"
+"fmt"
+"log"
+"net/http"
+"os"
+"os/signal"
+"syscall"
+"time"
+
+internal "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api"
+"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/router"
+"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/cleanup"
+"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/database"
+"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
+"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/smtp"
+"github.com/joho/godotenv")
 
 func main() {
+
 	err := godotenv.Load()
 	if err != nil {
 		panic(err)
@@ -83,4 +83,5 @@ func main() {
 	}
 
 	scheduler.Stop()
-}	
+}
+
