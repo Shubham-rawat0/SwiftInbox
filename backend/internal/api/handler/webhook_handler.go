@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -49,8 +50,6 @@ type webhookResponse struct {
 	Events      []string  `json:"events"`
 }
 
-var webhook_enc_key = os.Getenv("WEBHOOK_ENCRYPTION_KEY")
-
 func (a *WebhookHandler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 	reqBody := WebhookReqBody{}
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
@@ -77,7 +76,12 @@ func (a *WebhookHandler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encryptSecret, err := utils.Encrypt(secret, []byte(webhook_enc_key))
+	encryptionKey, err := webhookEncryptionKey()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	encryptSecret, err := utils.Encrypt(secret, encryptionKey)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, errors.New("error encrypting secret"))
 		return
@@ -244,7 +248,12 @@ func (a *WebhookHandler) TestWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secret, err := utils.Decrypt(data.SecretEncrypted, []byte(webhook_enc_key))
+	encryptionKey, err := webhookEncryptionKey()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	secret, err := utils.Decrypt(data.SecretEncrypted, encryptionKey)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, errors.New("failed to decrypt webhook secret"))
 		return
@@ -279,6 +288,23 @@ func (a *WebhookHandler) TestWebhook(w http.ResponseWriter, r *http.Request) {
 		"success":    resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices,
 		"statusCode": resp.StatusCode,
 	})
+}
+
+func webhookEncryptionKey() ([]byte, error) {
+	configuredKey := os.Getenv("WEBHOOK_ENCRYPTION_KEY")
+	if len(configuredKey) == utils.KeyBytes {
+		return []byte(configuredKey), nil
+	}
+
+	decodedKey, err := base64.RawStdEncoding.DecodeString(configuredKey)
+	if err != nil {
+		decodedKey, err = base64.StdEncoding.DecodeString(configuredKey)
+	}
+	if err != nil || len(decodedKey) != utils.KeyBytes {
+		return nil, errors.New("WEBHOOK_ENCRYPTION_KEY must be a 32-byte key or base64-encoded 32-byte key")
+	}
+
+	return decodedKey, nil
 }
 
 func (a *WebhookHandler) webhookContext(w http.ResponseWriter, r *http.Request) (uuid.UUID, uuid.UUID, bool) {

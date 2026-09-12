@@ -1,5 +1,5 @@
 -- name: IncrementUsage :one
-INSERT INTO developer_usage (developer_id, period, api_requests, mailboxes_created, messages_received)
+INSERT INTO developer_usage (developer_id, period, api_requests, mailbox_requests, messages_requests)
 SELECT @developer_id, DATE_TRUNC('month', CURRENT_DATE)::DATE, @api_requests,
              CASE WHEN @category = 'mailbox' THEN @api_requests ELSE 0 END,
              CASE WHEN @category = 'message' THEN @api_requests ELSE 0 END
