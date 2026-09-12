@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	internal "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/router"
@@ -53,17 +56,31 @@ func main() {
 
 	go func(){
 		if cleanupEnabled=="1"{
-			log.Println("starting cleanup scheduler")
+			log.Println("[SCHEDULER] starting cleanup scheduler")
 			scheduler.Start()
 		}
 	}()
 
-	err = server.ListenAndServe()
-	if err != nil {
-		panic(err)
+	serverErr := make(chan error, 1)
+
+	go func() {
+		serverErr <- server.ListenAndServe()
+	}()
+
+	select {
+		case err = <-serverErr:
+			if err != http.ErrServerClosed {
+				log.Fatal(err)
+			}
+
+		case sig := <-signChan:
+			log.Println("shutting down server", sig)
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := server.Shutdown(shutdownCtx); err != nil {
+				log.Printf("server shutdown error: %v", err)
+			}
 	}
 
-	sig:=<-signChan
-	log.Println("shutting down server",sig)
 	scheduler.Stop()
 }	
