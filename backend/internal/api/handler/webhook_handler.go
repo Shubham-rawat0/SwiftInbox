@@ -28,6 +28,10 @@ type WebhookReqBody struct {
 	Events []string `json:"events"`
 }
 
+type WebhookEventsBody struct {
+	Events []string `json:"events"`
+}
+
 type WebhookResBody struct {
 	ID          uuid.UUID `json:"id"`
 	DeveloperID uuid.UUID `json:"developer_id"`
@@ -168,6 +172,62 @@ func (a *WebhookHandler) DeleteWebhook(w http.ResponseWriter, r *http.Request) {
 		"message": "webhook deleted",
 		"id":      data.String(),
 	})
+}
+
+func (a *WebhookHandler) AddEvents(w http.ResponseWriter, r *http.Request) {
+	a.updateEvents(w, r, true)
+}
+
+func (a *WebhookHandler) RemoveEvents(w http.ResponseWriter, r *http.Request) {
+	a.updateEvents(w, r, false)
+}
+
+func (a *WebhookHandler) updateEvents(w http.ResponseWriter, r *http.Request, add bool) {
+	webhookID, developerID, ok := a.webhookContext(w, r)
+	if !ok {
+		return
+	}
+
+	request := WebhookEventsBody{}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		WriteError(w, http.StatusBadRequest, errors.New("invalid event body"))
+		return
+	}
+	if len(request.Events) == 0 {
+		WriteError(w, http.StatusBadRequest, errors.New("events are required"))
+		return
+	}
+	if err := utils.ValidateEvents(request.Events); err != nil {
+		WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if add {
+		data, err := a.queries.InsertEvent(r.Context(), postgres.InsertEventParams{
+			ID: webhookID, DeveloperID: developerID, Events: request.Events,
+		})
+		if err != nil {
+			a.writeWebhookQueryError(w, err, "failed to update webhook events")
+			return
+		}
+		WriteJSON(w, http.StatusOK, webhookResponse{
+			ID: data.ID, DeveloperID: data.DeveloperID, Url: data.Url,
+			IsActive: data.IsActive, Events: data.Events,
+		})
+		return
+	} else {
+		data, err := a.queries.DeleteEvents(r.Context(), postgres.DeleteEventsParams{
+			ID: webhookID, DeveloperID: developerID, Column3: request.Events,
+		})
+		if err != nil {
+			a.writeWebhookQueryError(w, err, "failed to update webhook events")
+			return
+		}
+		WriteJSON(w, http.StatusOK, webhookResponse{
+			ID: data.ID, DeveloperID: data.DeveloperID, Url: data.Url,
+			IsActive: data.IsActive, Events: data.Events,
+		})
+	}
 }
 
 func (a *WebhookHandler) TestWebhook(w http.ResponseWriter, r *http.Request) {

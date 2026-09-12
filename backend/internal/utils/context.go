@@ -32,16 +32,18 @@ func APIKeyIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 }
 
 var usageCosts = map[string]int{
-	"mailbox.create":  1,
-	"message.list":    3,
-	"message.get":     3,
-	"attachment.list": 3,
-	"attachment.get":  2,
-	"mailbox.delete":  1,
-	"webhook.create":  5,
-	"webhook.get":     1,
-	"webhook.test":    2,
-	"webhook.delete":  1,
+	"mailbox.create":        1,
+	"message.list":          3,
+	"message.get":           3,
+	"attachment.list":       3,
+	"attachment.get":        2,
+	"mailbox.delete":        1,
+	"webhook.create":        5,
+	"webhook.get":           1,
+	"webhook.test":          2,
+	"webhook.delete":        1,
+	"webhook.events.add":    1,
+	"webhook.events.remove": 1,
 }
 
 const usageOperationKey contextKey = "usageOperation"

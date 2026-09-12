@@ -63,6 +63,8 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("GET /api/webhooks/{id}", utils.WithUsage("webhook.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.GetWebhook))))
 	mux.Handle("POST /api/webhooks/{id}/test", utils.WithUsage("webhook.test", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.TestWebhook))))
 	mux.Handle("DELETE /api/webhooks/{id}", utils.WithUsage("webhook.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.DeleteWebhook))))
+	mux.Handle("POST /api/webhooks/{id}/events/add", utils.WithUsage("webhook.events.add", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.AddEvents))))
+	mux.Handle("DELETE /api/webhooks/{id}/events/remove", utils.WithUsage("webhook.events.remove", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.RemoveEvents))))
 
 	mux.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSON(w, 200, "healthy")

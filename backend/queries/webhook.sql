@@ -16,3 +16,23 @@ ORDER BY created_at DESC;
 DELETE FROM webhooks
 WHERE id = $1 AND developer_id = $2
 RETURNING id;
+
+-- name: InsertEvent :one
+UPDATE webhooks
+SET events = ARRAY(
+    SELECT DISTINCT unnest(events || $3)
+)
+WHERE id = $1
+  AND developer_id = $2
+RETURNING id, developer_id, url, is_active, events;
+
+-- name: DeleteEvents :one
+UPDATE webhooks
+SET events = ARRAY(
+  SELECT unnest(events)
+  EXCEPT
+  SELECT unnest($3::text[])
+)
+WHERE id = $1
+  AND developer_id = $2
+RETURNING id, developer_id, url, is_active, events;

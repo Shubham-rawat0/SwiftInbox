@@ -51,6 +51,45 @@ func (q *Queries) CreateWebhook(ctx context.Context, arg CreateWebhookParams) (C
 	return i, err
 }
 
+const deleteEvents = `-- name: DeleteEvents :one
+UPDATE webhooks
+SET events = ARRAY(
+  SELECT unnest(events)
+  EXCEPT
+  SELECT unnest($3::text[])
+)
+WHERE id = $1
+  AND developer_id = $2
+RETURNING id, developer_id, url, is_active, events
+`
+
+type DeleteEventsParams struct {
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+	Column3     []string
+}
+
+type DeleteEventsRow struct {
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+	Url         string
+	IsActive    bool
+	Events      []string
+}
+
+func (q *Queries) DeleteEvents(ctx context.Context, arg DeleteEventsParams) (DeleteEventsRow, error) {
+	row := q.db.QueryRowContext(ctx, deleteEvents, arg.ID, arg.DeveloperID, pq.Array(arg.Column3))
+	var i DeleteEventsRow
+	err := row.Scan(
+		&i.ID,
+		&i.DeveloperID,
+		&i.Url,
+		&i.IsActive,
+		pq.Array(&i.Events),
+	)
+	return i, err
+}
+
 const deleteWebhook = `-- name: DeleteWebhook :one
 DELETE FROM webhooks
 WHERE id = $1 AND developer_id = $2
@@ -97,6 +136,43 @@ func (q *Queries) GetWebhook(ctx context.Context, arg GetWebhookParams) (GetWebh
 		&i.DeveloperID,
 		&i.Url,
 		&i.SecretEncrypted,
+		&i.IsActive,
+		pq.Array(&i.Events),
+	)
+	return i, err
+}
+
+const insertEvent = `-- name: InsertEvent :one
+UPDATE webhooks
+SET events = ARRAY(
+    SELECT DISTINCT unnest(events || $3)
+)
+WHERE id = $1
+  AND developer_id = $2
+RETURNING id, developer_id, url, is_active, events
+`
+
+type InsertEventParams struct {
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+	Events      []string
+}
+
+type InsertEventRow struct {
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+	Url         string
+	IsActive    bool
+	Events      []string
+}
+
+func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) (InsertEventRow, error) {
+	row := q.db.QueryRowContext(ctx, insertEvent, arg.ID, arg.DeveloperID, pq.Array(arg.Events))
+	var i InsertEventRow
+	err := row.Scan(
+		&i.ID,
+		&i.DeveloperID,
+		&i.Url,
 		&i.IsActive,
 		pq.Array(&i.Events),
 	)
