@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	internal "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/router"
+	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/cleanup"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/database"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/smtp"
@@ -19,6 +22,7 @@ func main() {
 		panic(err)
 	}
 	databaseURL := os.Getenv("DB_URL")
+	cleanupEnabled:=os.Getenv("CLEANUP_ENABLED")
 
 	db, err := database.NewPostgres(databaseURL)
 	if err != nil {
@@ -27,6 +31,8 @@ func main() {
 	defer db.Close()
 
 	queries := postgres.New(db)
+
+	scheduler:=cleanup.NewScheduler(queries)
 
 	go func() {
 		fmt.Println("starting smtp server")
@@ -41,8 +47,23 @@ func main() {
 	server := internal.NewApiServer(port, handler)
 
 	fmt.Println("server started at port", port)
+
+	signChan:=make(chan os.Signal ,1)
+	signal.Notify(signChan,syscall.SIGINT, syscall.SIGTERM)
+
+	go func(){
+		if cleanupEnabled=="1"{
+			log.Println("starting cleanup scheduler")
+			scheduler.Start()
+		}
+	}()
+
 	err = server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}
-}
+
+	sig:=<-signChan
+	log.Println("shutting down server",sig)
+	scheduler.Stop()
+}	
