@@ -59,6 +59,7 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("GET /api/dev/{id}", http.HandlerFunc(developerHandler.GetDeveloper))
 	mux.Handle("GET /api/dev/{id}/keys", http.HandlerFunc(apiHandler.GetApiKeyUsage))
 
+	mux.Handle("GET /api/webhooks/dead-letters", utils.WithUsage("webhook.dead_letters", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(apiHandler.GetWebhookDeadLetters))))
 	mux.Handle("POST /api/webhooks/create", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.CreateWebhook))))
 	mux.Handle("POST /api/webhooks/{id}/mailboxes", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.AddMailbox))))
 	mux.Handle("DELETE /api/webhooks/{id}/mailboxes/{mailboxID}", utils.WithUsage("webhook.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.RemoveMailbox))))

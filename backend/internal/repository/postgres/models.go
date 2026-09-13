@@ -78,6 +78,19 @@ type Webhook struct {
 	UpdatedAt       time.Time
 }
 
+type WebhookDeadLetter struct {
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+	WebhookID   uuid.UUID
+	MailboxID   uuid.NullUUID
+	MessageID   uuid.NullUUID
+	Event       string
+	Url         string
+	Reason      string
+	Attempts    int32
+	CreatedAt   time.Time
+}
+
 type WebhookMailbox struct {
 	WebhookID uuid.UUID
 	MailboxID uuid.UUID

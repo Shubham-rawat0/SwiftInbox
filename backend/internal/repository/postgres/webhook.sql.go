@@ -7,6 +7,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
@@ -49,6 +50,41 @@ func (q *Queries) CreateWebhook(ctx context.Context, arg CreateWebhookParams) (C
 		pq.Array(&i.Events),
 	)
 	return i, err
+}
+
+const createWebhookDeadLetter = `-- name: CreateWebhookDeadLetter :exec
+INSERT INTO webhook_dead_letters (
+    id, developer_id, webhook_id, mailbox_id, message_id,
+    event, url, reason, attempts
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+`
+
+type CreateWebhookDeadLetterParams struct {
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+	WebhookID   uuid.UUID
+	MailboxID   uuid.NullUUID
+	MessageID   uuid.NullUUID
+	Event       string
+	Url         string
+	Reason      string
+	Attempts    int32
+}
+
+func (q *Queries) CreateWebhookDeadLetter(ctx context.Context, arg CreateWebhookDeadLetterParams) error {
+	_, err := q.db.ExecContext(ctx, createWebhookDeadLetter,
+		arg.ID,
+		arg.DeveloperID,
+		arg.WebhookID,
+		arg.MailboxID,
+		arg.MessageID,
+		arg.Event,
+		arg.Url,
+		arg.Reason,
+		arg.Attempts,
+	)
+	return err
 }
 
 const deleteEvents = `-- name: DeleteEvents :one
@@ -247,6 +283,59 @@ func (q *Queries) LinkWebhookMailbox(ctx context.Context, arg LinkWebhookMailbox
 	var mailbox_id uuid.UUID
 	err := row.Scan(&mailbox_id)
 	return mailbox_id, err
+}
+
+const listWebhookDeadLetters = `-- name: ListWebhookDeadLetters :many
+SELECT id, webhook_id, mailbox_id, message_id, event, url, reason, attempts, created_at
+FROM webhook_dead_letters
+WHERE developer_id = $1
+ORDER BY created_at DESC
+LIMIT 100
+`
+
+type ListWebhookDeadLettersRow struct {
+	ID        uuid.UUID
+	WebhookID uuid.UUID
+	MailboxID uuid.NullUUID
+	MessageID uuid.NullUUID
+	Event     string
+	Url       string
+	Reason    string
+	Attempts  int32
+	CreatedAt time.Time
+}
+
+func (q *Queries) ListWebhookDeadLetters(ctx context.Context, developerID uuid.UUID) ([]ListWebhookDeadLettersRow, error) {
+	rows, err := q.db.QueryContext(ctx, listWebhookDeadLetters, developerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWebhookDeadLettersRow
+	for rows.Next() {
+		var i ListWebhookDeadLettersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WebhookID,
+			&i.MailboxID,
+			&i.MessageID,
+			&i.Event,
+			&i.Url,
+			&i.Reason,
+			&i.Attempts,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listWebhooks = `-- name: ListWebhooks :many

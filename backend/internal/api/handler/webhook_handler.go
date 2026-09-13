@@ -350,6 +350,14 @@ func (a *WebhookHandler) TestWebhook(w http.ResponseWriter, r *http.Request) {
 		a.writeWebhookQueryError(w, err, "failed to fetch webhook")
 		return
 	}
+	if data.ID != webhookID {
+		WriteError(w, http.StatusNotFound, errors.New("webhook not found"))
+		return
+	}
+	if !data.IsActive {
+		WriteError(w, http.StatusConflict, errors.New("webhook is inactive"))
+		return
+	}
 
 	encryptionKey, err := webhookEncryptionKey()
 	if err != nil {
@@ -378,7 +386,7 @@ func (a *WebhookHandler) TestWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Webhook-Event", "webhook.test")
-	req.Header.Set("X-Webhook-Signature", utils.Sign(payload, secret))
+	req.Header.Set("X-Webhook-Signature", utils.Sign(payload, secret)) //signature for payload
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -392,6 +400,45 @@ func (a *WebhookHandler) TestWebhook(w http.ResponseWriter, r *http.Request) {
 		"statusCode": resp.StatusCode,
 	})
 }
+
+func (a *ApiHandler) GetWebhookDeadLetters(w http.ResponseWriter, r *http.Request) {
+	developerID, ok := utils.DeveloperIDFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, errors.New("api key required"))
+		return
+	}
+
+	data, err := a.queries.ListWebhookDeadLetters(r.Context(), developerID)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to fetch webhook dead letters"))
+		return
+	}
+
+	deadLetters := make([]map[string]any, 0, len(data))
+	for _, item := range data {
+		deadLetters = append(deadLetters, map[string]any{
+			"id":         item.ID,
+			"webhook_id": item.WebhookID,
+			"mailbox_id": nullableUUIDString(item.MailboxID),
+			"message_id": nullableUUIDString(item.MessageID),
+			"event":      item.Event,
+			"url":        item.Url,
+			"reason":     item.Reason,
+			"attempts":   item.Attempts,
+			"created_at": item.CreatedAt,
+		})
+	}
+
+	WriteJSON(w, http.StatusOK, deadLetters)
+}
+
+func nullableUUIDString(value uuid.NullUUID) any {
+	if !value.Valid {
+		return nil
+	}
+	return value.UUID
+}
+
 
 func webhookEncryptionKey() ([]byte, error) {
 	configuredKey := os.Getenv("WEBHOOK_ENCRYPTION_KEY")

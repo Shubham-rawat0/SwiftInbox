@@ -61,3 +61,17 @@ SET events = ARRAY(
 WHERE id = $1
   AND developer_id = $2
 RETURNING id, developer_id, url, is_active, events;
+
+-- name: CreateWebhookDeadLetter :exec
+INSERT INTO webhook_dead_letters (
+    id, developer_id, webhook_id, mailbox_id, message_id,
+    event, url, reason, attempts
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+
+-- name: ListWebhookDeadLetters :many
+SELECT id, webhook_id, mailbox_id, message_id, event, url, reason, attempts, created_at
+FROM webhook_dead_letters
+WHERE developer_id = $1
+ORDER BY created_at DESC
+LIMIT 100;

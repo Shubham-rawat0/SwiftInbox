@@ -44,6 +44,7 @@ var usageCosts = map[string]int{
 	"webhook.delete":        1,
 	"webhook.events.add":    1,
 	"webhook.events.remove": 1,
+	"webhook.dead_letters":  1,
 }
 
 const usageOperationKey contextKey = "usageOperation"

@@ -37,7 +37,7 @@ func main() {
 
 	queries := postgres.New(db)
 
-	rabbit, err := worker.StartWorker()
+	rabbit, err := worker.StartWorker(queries)
 	if err != nil {
 		panic(err)
 	}
@@ -45,7 +45,7 @@ func main() {
 
 	consumerCtx, stopConsumer := context.WithCancel(context.Background())
 	defer stopConsumer()
-	
+
 	go func() {
 		if err := rabbit.Consume(consumerCtx); err != nil && consumerCtx.Err() == nil {
 			log.Printf("[WEBHOOK CONSUMER] stopped unexpectedly: %v", err)

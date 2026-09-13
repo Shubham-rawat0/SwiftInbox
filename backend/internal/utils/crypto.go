@@ -120,7 +120,6 @@ func Decrypt(encrypted string, key []byte) (string, error) {
 }
 
 // Sign creates an HMAC-SHA256 signature for a webhook payload.
-//
 // The payload should be the exact raw bytes that will be sent
 // in the HTTP request body.
 func Sign(payload []byte, secret string) string {
