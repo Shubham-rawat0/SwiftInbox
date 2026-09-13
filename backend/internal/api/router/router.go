@@ -14,7 +14,7 @@ type Router struct {
 	handler http.Handler
 }
 
-func NewServerMux(queries *postgres.Queries) *Router {
+func NewServerMux(queries *postgres.Queries, publish handler.EventPublisher) *Router {
 
 	mux := http.NewServeMux()
 
@@ -37,7 +37,7 @@ func NewServerMux(queries *postgres.Queries) *Router {
 
 	apiMiddlewarehandler := middleware.NewApiMiddlewareHandler(queries)
 
-	messageHandler := handler.NewMessageHandler(queries)
+	messageHandler := handler.NewMessageHandler(queries, publish)
 	mailboxHandler := handler.NewMailboxHandler(queries)
 	apiHandler := handler.NewApiHandler(queries)
 	developerHandler := handler.NewDeveloperHandler(queries)

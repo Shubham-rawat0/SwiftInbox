@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	queue "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/events"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/parser"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
@@ -17,6 +19,11 @@ import (
 
 type MessageHandler struct {
 	queries *postgres.Queries
+	publish EventPublisher
+}
+
+type EventPublisher interface {
+	Publish(context.Context, queue.WebhookEvent) error
 }
 
 type MessagePreview struct {
@@ -34,13 +41,13 @@ type MessageResponse struct {
 }
 
 type ParsedMessage struct {
-	ID         uuid.UUID       `json:"id"`
-	From       string       `json:"from"`
-	Subject    string       `json:"subject"`
-	Body       []byte      `json:"body"`
-	CreatedAt  time.Time    `json:"createdAt"`
-	Mailbox    string       `json:"mailbox"`
-	ParsedData ParsedData   `json:"parsedData"`
+	ID         uuid.UUID  `json:"id"`
+	From       string     `json:"from"`
+	Subject    string     `json:"subject"`
+	Body       []byte     `json:"body"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	Mailbox    string     `json:"mailbox"`
+	ParsedData ParsedData `json:"parsedData"`
 }
 
 type ParsedData struct {
@@ -59,9 +66,10 @@ type Attachment struct {
 	Index       int    `json:"index"`
 }
 
-func NewMessageHandler(q *postgres.Queries) *MessageHandler {
+func NewMessageHandler(q *postgres.Queries, publish EventPublisher) *MessageHandler {
 	return &MessageHandler{
 		queries: q,
+		publish: publish,
 	}
 }
 
@@ -71,9 +79,9 @@ func (m *MessageHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 
 	var data []postgres.GetMessagesRow
 	var err error
-	
+
 	data, err = m.queries.GetMessages(r.Context(), address)
-	
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(
@@ -122,18 +130,18 @@ func (m *MessageHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *MessageHandler) GetMessage(w http.ResponseWriter, r *http.Request) {
-	id:=r.PathValue("id")
-	if id==""{
-		WriteError(w,http.StatusBadRequest,errors.New("need a message id"))
+	id := r.PathValue("id")
+	if id == "" {
+		WriteError(w, http.StatusBadRequest, errors.New("need a message id"))
 		return
 	}
-	Id,err:=uuid.Parse(id)
-	if err!=nil{
-		WriteError(w,http.StatusInternalServerError,errors.New("error parsing id"))
+	Id, err := uuid.Parse(id)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, errors.New("error parsing id"))
 		return
 	}
-	data,err:=m.queries.GetMessage(r.Context(),Id,)
-	if err!=nil{
+	data, err := m.queries.GetMessage(r.Context(), Id)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(
 				w,
@@ -142,50 +150,50 @@ func (m *MessageHandler) GetMessage(w http.ResponseWriter, r *http.Request) {
 			)
 			return
 		}
-		WriteError(w,http.StatusInternalServerError,err)
+		WriteError(w, http.StatusInternalServerError, err)
 	}
 
-	parsedMessage:=ParsedMessage{
-		ID: data.ID,
-		From      :data.Sender,
-		Subject   :data.Subject.String,
-		Body      :data.Raw,
-		CreatedAt  :data.CreatedAt,
-		Mailbox    :data.Address,	}
+	parsedMessage := ParsedMessage{
+		ID:        data.ID,
+		From:      data.Sender,
+		Subject:   data.Subject.String,
+		Body:      data.Raw,
+		CreatedAt: data.CreatedAt,
+		Mailbox:   data.Address}
 
-	parseBody,err:=parser.ParseEmail(data.Raw)
-	if err!=nil{
-		WriteError(w,http.StatusInternalServerError,err)
+	parseBody, err := parser.ParseEmail(data.Raw)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err)
 	}
-	
-	attachments,err:=parser.ParseAttachments(data.Raw)
-	if err!=nil{
-		WriteError(w,http.StatusInternalServerError,err)
+
+	attachments, err := parser.ParseAttachments(data.Raw)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err)
 	}
 
 	attachment := make([]Attachment, 0)
 
-	for i:=range(len(attachments)){
-		attachment=append(attachment, Attachment{
-			Filename: attachments[i].Filename,
+	for i := range len(attachments) {
+		attachment = append(attachment, Attachment{
+			Filename:    attachments[i].Filename,
 			ContentType: attachments[i].ContentType,
-			ContentID: attachments[i].ContentID,
-			Size: attachments[i].Size,
-			Index: attachments[i].Index,
+			ContentID:   attachments[i].ContentID,
+			Size:        attachments[i].Size,
+			Index:       attachments[i].Index,
 		})
 	}
-	parsedData:= ParsedData{
-		From: parseBody.From,
-		Subject: parseBody.Subject,
-		Text: parseBody.Text,
-		HTML: parseBody.HTML,
+	parsedData := ParsedData{
+		From:        parseBody.From,
+		Subject:     parseBody.Subject,
+		Text:        parseBody.Text,
+		HTML:        parseBody.HTML,
 		Attachments: attachment,
-	 }
+	}
 
-	 parsedMessage.ParsedData=parsedData
+	parsedMessage.ParsedData = parsedData
 
-	 WriteJSON(w,http.StatusOK,parsedMessage)
-	
+	WriteJSON(w, http.StatusOK, parsedMessage)
+
 }
 
 func (m *MessageHandler) GetAttachment(w http.ResponseWriter, r *http.Request) {

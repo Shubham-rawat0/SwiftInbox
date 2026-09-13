@@ -37,7 +37,11 @@ func main() {
 
 	queries := postgres.New(db)
 
-	worker.StartWorker()
+	rabbit,err:=worker.StartWorker()
+	if err!=nil{
+		panic(err)
+	}
+	defer rabbit.Close()
 
 	scheduler:=cleanup.NewScheduler(queries)
 
@@ -50,7 +54,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 
-	handler := router.NewServerMux(queries)
+	handler := router.NewServerMux(queries,rabbit)
 	server := internal.NewApiServer(port, handler)
 
 	fmt.Println("server started at port", port)

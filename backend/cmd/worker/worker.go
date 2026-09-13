@@ -1,32 +1,21 @@
 package worker
 
 import (
-	"log"
-
 	queue "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/events"
 )
 
-func StartWorker(){
+func StartWorker() (*queue.RabbitMQ, error) {
 	rabbit, err := queue.NewRabbitMQ(
-    	"amqp://guest:guest@localhost:5672/",
+		"amqp://guest:guest@localhost:5672/",
 	)
-
 	if err != nil {
-		log.Fatal(err)
-		return
+		return nil, err
 	}
 
-	_, err = rabbit.Ch.QueueDeclare(
-    "webhook-events",
-    true,  // durable
-    false, // delete when unused
-    false, // exclusive
-    false, // no-wait
-    nil,)
-
-	if err != nil {
-		log.Fatal(err)
+	if err := rabbit.AddQueue(queue.WebhookEventsQueue); err != nil {
+		rabbit.Close()
+		return nil, err
 	}
 
-	defer rabbit.Close()
+	return rabbit, nil
 }
