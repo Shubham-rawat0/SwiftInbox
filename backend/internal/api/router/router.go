@@ -54,6 +54,8 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("POST /api/create", messageAccessLimiter.Middleware(http.HandlerFunc(apiHandler.AddApiKey)))
 	mux.Handle("DELETE /api/revoke", messageAccessLimiter.Middleware(apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(apiHandler.RevokeApiKey))))
 	mux.Handle("POST /api/dev/create", http.HandlerFunc(developerHandler.CreateDeveloper))
+	mux.Handle("POST /api/dev/signin", http.HandlerFunc(developerHandler.SignIn))
+	mux.Handle("POST /api/dev/signout", http.HandlerFunc(developerHandler.SignOut))
 	mux.Handle("GET /api/dev/{id}", http.HandlerFunc(developerHandler.GetDeveloper))
 	mux.Handle("GET /api/dev/{id}/keys", http.HandlerFunc(apiHandler.GetApiKeyUsage))
 
@@ -87,8 +89,12 @@ func (h *Router) ServeHTTP(
 
 func cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-		w.Header().Set("Access-Control-Allow-Origin", "127.0.0.1:3000")
+		origin := r.Header.Get("Origin")
+		if origin == "http://localhost:3000" || origin == "http://127.0.0.1:3000" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Add("Vary", "Origin")
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 

@@ -29,11 +29,12 @@ type RequestApiBody struct {
 }
 
 type CreateDeveloperBody struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
-type GetApiKeyBody struct{
+type GetApiKeyBody struct {
 	DeveloperId uuid.UUID `json:"developer_id"`
 }
 
@@ -93,7 +94,6 @@ func (a *ApiHandler) AddApiKey(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
 func (a *ApiHandler) RevokeApiKey(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.APIKeyIDFromContext(r.Context())
 	if !ok {
@@ -107,21 +107,21 @@ func (a *ApiHandler) RevokeApiKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSON(w,http.StatusOK,data)
+	WriteJSON(w, http.StatusOK, data)
 }
 
-func (a *ApiHandler) GetApiKeyUsage(w http.ResponseWriter, r *http.Request) {	
+func (a *ApiHandler) GetApiKeyUsage(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-    devID, err := uuid.Parse(id)
-    if err != nil {
-        WriteError(w, http.StatusBadRequest, errors.New("invalid developer ID"))
-        return
-    }
+	devID, err := uuid.Parse(id)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, errors.New("invalid developer ID"))
+		return
+	}
 
 	data, err := a.queries.GetUserApiKeys(r.Context(), devID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	WriteJSON(w,http.StatusOK,data)
+	WriteJSON(w, http.StatusOK, data)
 }

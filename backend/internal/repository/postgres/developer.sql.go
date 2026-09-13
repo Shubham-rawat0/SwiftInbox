@@ -16,15 +16,17 @@ const createDeveloper = `-- name: CreateDeveloper :one
 INSERT INTO developer (
     id ,
     name,
-    email
-) VALUES ($1,$2,$3)
+    email,
+    password_hash
+) VALUES ($1,$2,$3,$4)
 RETURNING id, name,email
 `
 
 type CreateDeveloperParams struct {
-	ID    uuid.UUID
-	Name  string
-	Email string
+	ID           uuid.UUID
+	Name         string
+	Email        string
+	PasswordHash string
 }
 
 type CreateDeveloperRow struct {
@@ -34,7 +36,12 @@ type CreateDeveloperRow struct {
 }
 
 func (q *Queries) CreateDeveloper(ctx context.Context, arg CreateDeveloperParams) (CreateDeveloperRow, error) {
-	row := q.db.QueryRowContext(ctx, createDeveloper, arg.ID, arg.Name, arg.Email)
+	row := q.db.QueryRowContext(ctx, createDeveloper,
+		arg.ID,
+		arg.Name,
+		arg.Email,
+		arg.PasswordHash,
+	)
 	var i CreateDeveloperRow
 	err := row.Scan(&i.ID, &i.Name, &i.Email)
 	return i, err
@@ -86,4 +93,43 @@ func (q *Queries) GetDeveloper(ctx context.Context, id uuid.UUID) (GetDeveloperR
 		&i.MessagesRequests,
 	)
 	return i, err
+}
+
+const getDeveloperAuthByEmail = `-- name: GetDeveloperAuthByEmail :one
+SELECT id, name, email
+    , password_hash
+FROM developer
+WHERE email = $1
+`
+
+type GetDeveloperAuthByEmailRow struct {
+	ID           uuid.UUID
+	Name         string
+	Email        string
+	PasswordHash string
+}
+
+func (q *Queries) GetDeveloperAuthByEmail(ctx context.Context, email string) (GetDeveloperAuthByEmailRow, error) {
+	row := q.db.QueryRowContext(ctx, getDeveloperAuthByEmail, email)
+	var i GetDeveloperAuthByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.PasswordHash,
+	)
+	return i, err
+}
+
+const getDeveloperPasswordHash = `-- name: GetDeveloperPasswordHash :one
+SELECT password_hash
+FROM developer
+WHERE id = $1
+`
+
+func (q *Queries) GetDeveloperPasswordHash(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRowContext(ctx, getDeveloperPasswordHash, id)
+	var password_hash string
+	err := row.Scan(&password_hash)
+	return password_hash, err
 }

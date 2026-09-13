@@ -37,6 +37,7 @@ type Developer struct {
 	ApiQuota     int32
 	MailboxQuota int32
 	MessageQuota int32
+	PasswordHash string
 }
 
 type DeveloperUsage struct {

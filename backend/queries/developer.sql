@@ -2,9 +2,21 @@
 INSERT INTO developer (
     id ,
     name,
-    email
-) VALUES ($1,$2,$3)
+    email,
+    password_hash
+) VALUES ($1,$2,$3,$4)
 RETURNING id, name,email;
+
+-- name: GetDeveloperAuthByEmail :one
+SELECT id, name, email
+    , password_hash
+FROM developer
+WHERE email = $1;
+
+-- name: GetDeveloperPasswordHash :one
+SELECT password_hash
+FROM developer
+WHERE id = $1;
 
 -- name: GetDeveloper :one
 
