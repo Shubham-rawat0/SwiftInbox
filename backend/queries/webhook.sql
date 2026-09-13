@@ -12,6 +12,13 @@ FROM webhooks
 WHERE developer_id = $1
 ORDER BY created_at DESC;
 
+-- name: GetWebhooksByMailboxID :many
+SELECT w.id, w.developer_id, w.url, w.is_active, w.events
+FROM webhooks w
+JOIN webhook_mailboxes wm ON wm.webhook_id = w.id
+WHERE wm.mailbox_id = $1
+ORDER BY w.created_at DESC;
+
 -- name: DeleteWebhook :one
 DELETE FROM webhooks
 WHERE id = $1 AND developer_id = $2

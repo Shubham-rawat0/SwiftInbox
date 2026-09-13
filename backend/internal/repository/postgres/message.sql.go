@@ -70,6 +70,23 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 	return i, err
 }
 
+const deleteExpiredMessages = `-- name: DeleteExpiredMessages :one
+WITH deleted AS (
+    DELETE FROM messages
+    WHERE expires_at < $1
+    RETURNING id
+)
+SELECT COUNT(*)::INT AS deleted_count
+FROM deleted
+`
+
+func (q *Queries) DeleteExpiredMessages(ctx context.Context, expiresAt time.Time) (int32, error) {
+	row := q.db.QueryRowContext(ctx, deleteExpiredMessages, expiresAt)
+	var deleted_count int32
+	err := row.Scan(&deleted_count)
+	return deleted_count, err
+}
+
 const getMessage = `-- name: GetMessage :one
 
 SELECT

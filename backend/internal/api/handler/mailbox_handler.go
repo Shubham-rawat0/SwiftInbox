@@ -200,6 +200,9 @@ func (m *MailboxHandler) DeleteMailbox(w http.ResponseWriter, r *http.Request) {
 
 func mailboxExpiresAt(requested *time.Time, isDeveloper bool) (time.Time, int, error) {
 	if requested == nil {
+		if isDeveloper {
+			return time.Now().Add(30 * 24 * time.Hour), 0, nil
+		}
 		return time.Now().Add(24 * time.Hour), 0, nil
 	}
 

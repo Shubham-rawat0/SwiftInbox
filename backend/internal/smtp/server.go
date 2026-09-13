@@ -27,14 +27,12 @@ func NewSMTPServer(queries *postgres.Queries) *SMTPServer {
 	}
 }
 
-
 type Session struct {
 	queries *postgres.Queries
 
 	from       string
 	recipients []string
 }
-
 
 func (s *Session) Mail(from string, opts *gosmtp.MailOptions) error {
 	s.from = utils.NormalizeAddress(from)
@@ -90,7 +88,6 @@ func (s *Session) Rcpt(to string, opts *gosmtp.RcptOptions) error {
 
 	return nil
 }
-
 
 func (s *Session) Data(r io.Reader) error {
 	raw, err := io.ReadAll(r)
@@ -157,22 +154,31 @@ func (s *Session) Data(r io.Reader) error {
 	return nil
 }
 
+func (s *Session) storeMessage(recipient string, parsed *parser.ParsedEmail, raw []byte) error {
 
-func (s *Session) storeMessage(recipient string,parsed *parser.ParsedEmail,raw []byte,) error {
-
-	expiresAt := time.Now().Add(24 * time.Hour)
-	data, err:=s.queries.GetMailboxId(context.Background(),recipient)
-	id:=uuid.New()
-	if err!=nil{
+	ctx := context.Background()
+	data, err := s.queries.GetMailboxId(ctx, recipient)
+	id := uuid.New()
+	if err != nil {
 		return err
 	}
+
+	createdBy, err := s.queries.GetMailboxCreatedBy(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	expiresAt := time.Now().Add(24 * time.Hour)
+	if createdBy.Valid {
+		expiresAt = time.Now().Add(30 * 24 * time.Hour)
+	}
 	_, err = s.queries.CreateMessage(
-		context.Background(),
+		ctx,
 		postgres.CreateMessageParams{
-			ID: id,
-			Address: recipient,
+			ID:        id,
+			Address:   recipient,
 			MailboxID: data,
-			Sender: parsed.From,
+			Sender:    parsed.From,
 			Subject: sql.NullString{
 				String: parsed.Subject,
 				Valid:  parsed.Subject != "",
@@ -185,12 +191,11 @@ func (s *Session) storeMessage(recipient string,parsed *parser.ParsedEmail,raw [
 	return err
 }
 
-
 type Backend struct {
 	queries *postgres.Queries
 }
 
-func (b *Backend) NewSession(conn *gosmtp.Conn,) (gosmtp.Session, error) {
+func (b *Backend) NewSession(conn *gosmtp.Conn) (gosmtp.Session, error) {
 
 	return &Session{
 		queries: b.queries,
@@ -242,7 +247,7 @@ func (s *SMTPServer) Start() error {
 
 	log.Printf(
 		"SMTP server listening on port %d , domain %v",
-		port,server.Domain,
+		port, server.Domain,
 	)
 
 	return server.ListenAndServe()

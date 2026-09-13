@@ -38,6 +38,11 @@ RETURNING *;
 -- name: GetMailboxId :one
 SELECT id from mailboxes where address=$1;
 
+-- name: GetMailboxCreatedBy :one
+SELECT created_by
+FROM mailboxes
+WHERE id = $1;
+
 -- name: DeleteMailbox :one
 DELETE FROM mailboxes
 WHERE address = $1 AND created_by = $2

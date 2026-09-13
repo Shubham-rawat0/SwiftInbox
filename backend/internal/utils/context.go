@@ -88,7 +88,7 @@ func WithUsage(operation string, next http.Handler) http.Handler {
 	})
 }
 
-var validEvents = map[string]bool{"email.received": true, "email.deleted": true, "mailbox.created": true, "mailbox.expired": true}
+var validEvents = map[string]bool{"email.received": true, "email.deleted": true, "mailbox.expired": true}
 
 func ValidateEvents(events []string) error {
 	for _, event := range events {

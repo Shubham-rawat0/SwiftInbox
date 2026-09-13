@@ -57,3 +57,12 @@ VALUES (
     $7
 )
 RETURNING *;
+
+-- name: DeleteExpiredMessages :one
+WITH deleted AS (
+    DELETE FROM messages
+    WHERE expires_at < $1
+    RETURNING id
+)
+SELECT COUNT(*)::INT AS deleted_count
+FROM deleted;
