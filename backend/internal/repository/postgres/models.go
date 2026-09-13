@@ -77,3 +77,9 @@ type Webhook struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
+
+type WebhookMailbox struct {
+	WebhookID uuid.UUID
+	MailboxID uuid.UUID
+	CreatedAt time.Time
+}

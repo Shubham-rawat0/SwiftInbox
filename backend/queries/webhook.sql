@@ -17,6 +17,24 @@ DELETE FROM webhooks
 WHERE id = $1 AND developer_id = $2
 RETURNING id;
 
+-- name: LinkWebhookMailbox :one
+INSERT INTO webhook_mailboxes(webhook_id, mailbox_id)
+SELECT $1, m.id
+FROM mailboxes m
+JOIN webhooks w ON w.id = $1 AND w.developer_id = $3
+WHERE m.id = $2 AND m.created_by = $3
+ON CONFLICT (webhook_id, mailbox_id) DO NOTHING
+RETURNING mailbox_id;
+
+-- name: RemoveWebhookMailbox :one
+DELETE FROM webhook_mailboxes wm
+USING webhooks w
+WHERE wm.webhook_id = w.id
+  AND w.id = $1
+  AND w.developer_id = $3
+  AND wm.mailbox_id = $2
+RETURNING wm.mailbox_id;
+
 -- name: InsertEvent :one
 UPDATE webhooks
 SET events = ARRAY(

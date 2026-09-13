@@ -25,21 +25,27 @@ func NewWebhookHandler(q *postgres.Queries) *WebhookHandler {
 }
 
 type WebhookReqBody struct {
-	Url    string   `json:"url"`
-	Events []string `json:"events"`
+	Url        string      `json:"url"`
+	Events     []string    `json:"events"`
+	MailboxIDs []uuid.UUID `json:"mailbox_ids"`
 }
 
 type WebhookEventsBody struct {
 	Events []string `json:"events"`
 }
 
+type WebhookMailboxBody struct {
+	MailboxID uuid.UUID `json:"mailbox_id"`
+}
+
 type WebhookResBody struct {
-	ID          uuid.UUID `json:"id"`
-	DeveloperID uuid.UUID `json:"developer_id"`
-	Url         string    `json:"url"`
-	IsActive    bool      `json:"is_active"`
-	Events      []string  `json:"events"`
-	Secret      string    `json:"secret"`
+	ID          uuid.UUID   `json:"id"`
+	DeveloperID uuid.UUID   `json:"developer_id"`
+	Url         string      `json:"url"`
+	IsActive    bool        `json:"is_active"`
+	Events      []string    `json:"events"`
+	Secret      string      `json:"secret"`
+	MailboxIDs  []uuid.UUID `json:"mailbox_ids"`
 }
 
 type webhookResponse struct {
@@ -63,6 +69,11 @@ func (a *WebhookHandler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(reqBody.MailboxIDs) == 0 {
+		WriteError(w, http.StatusBadRequest, errors.New("mailbox_ids are required"))
+		return
+	}
+
 	id := uuid.New()
 	developerId, ok := utils.DeveloperIDFromContext(r.Context())
 	if !ok {
@@ -81,6 +92,7 @@ func (a *WebhookHandler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
+
 	encryptSecret, err := utils.Encrypt(secret, encryptionKey)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, errors.New("error encrypting secret"))
@@ -104,14 +116,105 @@ func (a *WebhookHandler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, errors.New("failed to create webhook"))
 		return
 	}
+
+	linkedMailboxIDs := make([]uuid.UUID, 0, len(reqBody.MailboxIDs))
+	seenMailboxIDs := make(map[uuid.UUID]struct{}, len(reqBody.MailboxIDs))
+	for _, mailboxID := range reqBody.MailboxIDs {
+		if _, seen := seenMailboxIDs[mailboxID]; seen {
+			continue
+		}
+		seenMailboxIDs[mailboxID] = struct{}{}
+
+		linkedMailboxID, linkErr := a.queries.LinkWebhookMailbox(r.Context(), postgres.LinkWebhookMailboxParams{
+			WebhookID:   id,
+			ID:          mailboxID,
+			DeveloperID: developerId,
+		})
+		if linkErr != nil {
+			_, _ = a.queries.DeleteWebhook(r.Context(), postgres.DeleteWebhookParams{ID: id, DeveloperID: developerId})
+			if errors.Is(linkErr, sql.ErrNoRows) {
+				WriteError(w, http.StatusBadRequest, errors.New("one or more mailboxes do not belong to the developer"))
+				return
+			}
+			WriteError(w, http.StatusInternalServerError, errors.New("failed to link mailbox to webhook"))
+			return
+		}
+		linkedMailboxIDs = append(linkedMailboxIDs, linkedMailboxID)
+	}
+
 	res := WebhookResBody{ID: data.ID,
 		DeveloperID: data.DeveloperID,
 		Url:         data.Url,
 		IsActive:    data.IsActive,
 		Events:      data.Events,
 		Secret:      secret,
+		MailboxIDs:  linkedMailboxIDs,
 	}
 	WriteJSON(w, http.StatusOK, res)
+}
+
+func (a *WebhookHandler) AddMailbox(w http.ResponseWriter, r *http.Request) {
+	webhookID, developerID, ok := a.webhookContext(w, r)
+	if !ok {
+		return
+	}
+
+	var request WebhookMailboxBody
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.MailboxID == uuid.Nil {
+		WriteError(w, http.StatusBadRequest, errors.New("mailbox_id is required"))
+		return
+	}
+
+	mailboxID, err := a.queries.LinkWebhookMailbox(r.Context(), postgres.LinkWebhookMailboxParams{
+		WebhookID:   webhookID,
+		ID:          request.MailboxID,
+		DeveloperID: developerID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, errors.New("webhook or mailbox not found"))
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to add mailbox to webhook"))
+		return
+	}
+
+	WriteJSON(w, http.StatusCreated, map[string]string{
+		"message":    "mailbox added to webhook",
+		"mailbox_id": mailboxID.String(),
+	})
+}
+
+func (a *WebhookHandler) RemoveMailbox(w http.ResponseWriter, r *http.Request) {
+	webhookID, developerID, ok := a.webhookContext(w, r)
+	if !ok {
+		return
+	}
+
+	mailboxID, err := uuid.Parse(r.PathValue("mailboxID"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, errors.New("invalid mailbox id"))
+		return
+	}
+
+	removedMailboxID, err := a.queries.RemoveWebhookMailbox(r.Context(), postgres.RemoveWebhookMailboxParams{
+		ID:          webhookID,
+		MailboxID:   mailboxID,
+		DeveloperID: developerID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, errors.New("webhook mailbox link not found"))
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to remove mailbox from webhook"))
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]string{
+		"message":    "mailbox removed from webhook",
+		"mailbox_id": removedMailboxID.String(),
+	})
 }
 
 func (a *WebhookHandler) GetWebhook(w http.ResponseWriter, r *http.Request) {

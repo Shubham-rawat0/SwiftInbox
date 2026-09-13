@@ -8,12 +8,25 @@ import (
 
 func StartWorker(){
 	rabbit, err := queue.NewRabbitMQ(
-    "amqp://guest:guest@localhost:5672/",
-)
-if err != nil {
-    log.Fatal(err)
-	return
-}
+    	"amqp://guest:guest@localhost:5672/",
+	)
 
-defer rabbit.Close()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	_, err = rabbit.Ch.QueueDeclare(
+    "webhook-events",
+    true,  // durable
+    false, // delete when unused
+    false, // exclusive
+    false, // no-wait
+    nil,)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer rabbit.Close()
 }

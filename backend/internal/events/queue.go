@@ -6,6 +6,13 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+type WebhookEvent struct {
+    WebhookID string `json:"webhook_id"`
+    URL       string `json:"url"`
+    Event     string `json:"event"`
+    MessageID string `json:"message_id"`
+}
+
 type RabbitMQ struct {
     Conn *amqp.Connection
     Ch   *amqp.Channel
@@ -24,6 +31,7 @@ func NewRabbitMQ(url string) (*RabbitMQ, error) {
         return nil, err
     }
 
+
     return &RabbitMQ{
         Conn: conn,
         Ch:   ch,
@@ -34,3 +42,4 @@ func (r *RabbitMQ) Close() {
     r.Ch.Close()
     r.Conn.Close()
 }
+

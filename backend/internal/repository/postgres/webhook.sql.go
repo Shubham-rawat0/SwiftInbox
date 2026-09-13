@@ -179,6 +179,29 @@ func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) (Inser
 	return i, err
 }
 
+const linkWebhookMailbox = `-- name: LinkWebhookMailbox :one
+INSERT INTO webhook_mailboxes(webhook_id, mailbox_id)
+SELECT $1, m.id
+FROM mailboxes m
+JOIN webhooks w ON w.id = $1 AND w.developer_id = $3
+WHERE m.id = $2 AND m.created_by = $3
+ON CONFLICT (webhook_id, mailbox_id) DO NOTHING
+RETURNING mailbox_id
+`
+
+type LinkWebhookMailboxParams struct {
+	WebhookID   uuid.UUID
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+}
+
+func (q *Queries) LinkWebhookMailbox(ctx context.Context, arg LinkWebhookMailboxParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, linkWebhookMailbox, arg.WebhookID, arg.ID, arg.DeveloperID)
+	var mailbox_id uuid.UUID
+	err := row.Scan(&mailbox_id)
+	return mailbox_id, err
+}
+
 const listWebhooks = `-- name: ListWebhooks :many
 SELECT id, developer_id, url, is_active, events
 FROM webhooks
@@ -221,4 +244,27 @@ func (q *Queries) ListWebhooks(ctx context.Context, developerID uuid.UUID) ([]Li
 		return nil, err
 	}
 	return items, nil
+}
+
+const removeWebhookMailbox = `-- name: RemoveWebhookMailbox :one
+DELETE FROM webhook_mailboxes wm
+USING webhooks w
+WHERE wm.webhook_id = w.id
+  AND w.id = $1
+  AND w.developer_id = $3
+  AND wm.mailbox_id = $2
+RETURNING wm.mailbox_id
+`
+
+type RemoveWebhookMailboxParams struct {
+	ID          uuid.UUID
+	MailboxID   uuid.UUID
+	DeveloperID uuid.UUID
+}
+
+func (q *Queries) RemoveWebhookMailbox(ctx context.Context, arg RemoveWebhookMailboxParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, removeWebhookMailbox, arg.ID, arg.MailboxID, arg.DeveloperID)
+	var mailbox_id uuid.UUID
+	err := row.Scan(&mailbox_id)
+	return mailbox_id, err
 }
