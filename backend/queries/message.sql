@@ -58,11 +58,11 @@ VALUES (
 )
 RETURNING *;
 
--- name: DeleteExpiredMessages :one
+-- name: DeleteExpiredMessages :many
 WITH deleted AS (
     DELETE FROM messages
     WHERE expires_at < $1
-    RETURNING id
+    RETURNING id, mailbox_id
 )
-SELECT COUNT(*)::INT AS deleted_count
+SELECT id, mailbox_id
 FROM deleted;

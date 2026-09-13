@@ -143,7 +143,7 @@ func (q *Queries) GetWebhook(ctx context.Context, arg GetWebhookParams) (GetWebh
 }
 
 const getWebhooksByMailboxID = `-- name: GetWebhooksByMailboxID :many
-SELECT w.id, w.developer_id, w.url, w.is_active, w.events
+SELECT w.id, w.developer_id, w.url, w.secret_encrypted, w.is_active, w.events
 FROM webhooks w
 JOIN webhook_mailboxes wm ON wm.webhook_id = w.id
 WHERE wm.mailbox_id = $1
@@ -151,11 +151,12 @@ ORDER BY w.created_at DESC
 `
 
 type GetWebhooksByMailboxIDRow struct {
-	ID          uuid.UUID
-	DeveloperID uuid.UUID
-	Url         string
-	IsActive    bool
-	Events      []string
+	ID              uuid.UUID
+	DeveloperID     uuid.UUID
+	Url             string
+	SecretEncrypted string
+	IsActive        bool
+	Events          []string
 }
 
 func (q *Queries) GetWebhooksByMailboxID(ctx context.Context, mailboxID uuid.UUID) ([]GetWebhooksByMailboxIDRow, error) {
@@ -171,6 +172,7 @@ func (q *Queries) GetWebhooksByMailboxID(ctx context.Context, mailboxID uuid.UUI
 			&i.ID,
 			&i.DeveloperID,
 			&i.Url,
+			&i.SecretEncrypted,
 			&i.IsActive,
 			pq.Array(&i.Events),
 		); err != nil {

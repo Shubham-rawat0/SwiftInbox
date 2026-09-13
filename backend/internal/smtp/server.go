@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	queue "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/events"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/parser"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
@@ -19,17 +20,19 @@ import (
 
 type SMTPServer struct {
 	queries *postgres.Queries
+	publish queue.Publisher
 }
 
-func NewSMTPServer(queries *postgres.Queries) *SMTPServer {
+func NewSMTPServer(queries *postgres.Queries, publish queue.Publisher) *SMTPServer {
 	return &SMTPServer{
 		queries: queries,
+		publish: publish,
 	}
 }
 
 type Session struct {
-	queries *postgres.Queries
-
+	queries    *postgres.Queries
+	publish    queue.Publisher
 	from       string
 	recipients []string
 }
@@ -187,18 +190,27 @@ func (s *Session) storeMessage(recipient string, parsed *parser.ParsedEmail, raw
 			ExpiresAt: expiresAt,
 		},
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	if err := queue.PublishForMailbox(ctx, s.queries, s.publish, data, "email.received", id); err != nil {
+		log.Printf("[WEBHOOK ERROR] event=email.received mailbox=%s message=%s error=%v", data, id, err)
+	}
+
+	return nil
 }
 
 type Backend struct {
 	queries *postgres.Queries
+	publish queue.Publisher
 }
 
 func (b *Backend) NewSession(conn *gosmtp.Conn) (gosmtp.Session, error) {
 
 	return &Session{
 		queries: b.queries,
+		publish: b.publish,
 	}, nil
 }
 
@@ -233,6 +245,7 @@ func (s *SMTPServer) Start() error {
 	server := gosmtp.NewServer(
 		&Backend{
 			queries: s.queries,
+			publish: s.publish,
 		},
 	)
 

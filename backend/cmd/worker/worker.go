@@ -16,6 +16,10 @@ func StartWorker() (*queue.RabbitMQ, error) {
 		rabbit.Close()
 		return nil, err
 	}
+	if err := rabbit.AddQueue(queue.WebhookEventsDeadLetterQueue); err != nil {
+		rabbit.Close()
+		return nil, err
+	}
 
 	return rabbit, nil
 }

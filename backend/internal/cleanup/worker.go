@@ -7,26 +7,27 @@ import (
 	"strconv"
 	"time"
 
+	queue "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/events"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
 )
 
-
-type Scheduler struct{
-	timer 			*time.Timer
-	running  		bool
+type Scheduler struct {
+	timer           *time.Timer
+	running         bool
 	defaultInterval time.Duration
-	startDelay 		time.Duration
-	q 				*postgres.Queries	
+	startDelay      time.Duration
+	q               *postgres.Queries
+	publisher       queue.Publisher
 }
 
 const (
 	defaultIntervalFallback = 6 * time.Hour
-	maxStartDelay            = 5 * time.Minute
-	jitterPct                = 0.10
-	minDelay                 = time.Minute
+	maxStartDelay           = 5 * time.Minute
+	jitterPct               = 0.10
+	minDelay                = time.Minute
 )
 
-func NewScheduler(q *postgres.Queries) *Scheduler{
+func NewScheduler(q *postgres.Queries, publisher queue.Publisher) *Scheduler {
 	defaultInterval := getDurationEnv(
 		"CLEANUP_INTERVAL_MS",
 		defaultIntervalFallback,
@@ -40,11 +41,12 @@ func NewScheduler(q *postgres.Queries) *Scheduler{
 	return &Scheduler{
 		defaultInterval: defaultInterval,
 		startDelay:      startDelay,
-		q:				 q,
+		q:               q,
+		publisher:       publisher,
 	}
 }
 
-func (s *Scheduler) Start(){
+func (s *Scheduler) Start() {
 	if s.running {
 		log.Println("[SCHEDULER] Already running")
 		return
@@ -58,10 +60,10 @@ func (s *Scheduler) Start(){
 	s.scheduleNext(s.startDelay)
 }
 
-func (s *Scheduler) Stop(){
-	if s.timer!=nil{
+func (s *Scheduler) Stop() {
+	if s.timer != nil {
 		s.timer.Stop()
-		s.timer=nil
+		s.timer = nil
 	}
 	s.running = false
 	log.Println("[SCHEDULER] Stopped")
@@ -73,23 +75,23 @@ func (s *Scheduler) GetStatus() map[string]bool {
 	}
 }
 
-func (s *Scheduler) scheduleNext(baseMs time.Duration){
-	if !s.running{
+func (s *Scheduler) scheduleNext(baseMs time.Duration) {
+	if !s.running {
 		return
 	}
 	jitterFactor := 1 + (rand.Float64()*2*jitterPct - jitterPct)
 	delay := time.Duration(float64(baseMs) * jitterFactor)
-	delay=max(delay,minDelay)
-	
-	time.AfterFunc(delay,s.tick)
+	delay = max(delay, minDelay)
+
+	time.AfterFunc(delay, s.tick)
 }
 
-func (s *Scheduler) tick(){
-	if !s.running{
+func (s *Scheduler) tick() {
+	if !s.running {
 		return
 	}
-	res,err:=CleanUpExpired(s.q)
-	if err!=nil{
+	res, err := CleanUpExpired(s.q, s.publisher)
+	if err != nil {
 		s.scheduleNext(s.defaultInterval)
 		return
 	}

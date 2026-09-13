@@ -13,7 +13,7 @@ WHERE developer_id = $1
 ORDER BY created_at DESC;
 
 -- name: GetWebhooksByMailboxID :many
-SELECT w.id, w.developer_id, w.url, w.is_active, w.events
+SELECT w.id, w.developer_id, w.url, w.secret_encrypted, w.is_active, w.events
 FROM webhooks w
 JOIN webhook_mailboxes wm ON wm.webhook_id = w.id
 WHERE wm.mailbox_id = $1

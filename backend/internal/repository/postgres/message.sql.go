@@ -70,21 +70,42 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 	return i, err
 }
 
-const deleteExpiredMessages = `-- name: DeleteExpiredMessages :one
+const deleteExpiredMessages = `-- name: DeleteExpiredMessages :many
 WITH deleted AS (
     DELETE FROM messages
     WHERE expires_at < $1
-    RETURNING id
+    RETURNING id, mailbox_id
 )
-SELECT COUNT(*)::INT AS deleted_count
+SELECT id, mailbox_id
 FROM deleted
 `
 
-func (q *Queries) DeleteExpiredMessages(ctx context.Context, expiresAt time.Time) (int32, error) {
-	row := q.db.QueryRowContext(ctx, deleteExpiredMessages, expiresAt)
-	var deleted_count int32
-	err := row.Scan(&deleted_count)
-	return deleted_count, err
+type DeleteExpiredMessagesRow struct {
+	ID        uuid.UUID
+	MailboxID uuid.UUID
+}
+
+func (q *Queries) DeleteExpiredMessages(ctx context.Context, expiresAt time.Time) ([]DeleteExpiredMessagesRow, error) {
+	rows, err := q.db.QueryContext(ctx, deleteExpiredMessages, expiresAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DeleteExpiredMessagesRow
+	for rows.Next() {
+		var i DeleteExpiredMessagesRow
+		if err := rows.Scan(&i.ID, &i.MailboxID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getMessage = `-- name: GetMessage :one

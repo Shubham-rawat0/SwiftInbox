@@ -9,15 +9,33 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"os"
 )
+
+func WebhookEncryptionKey() ([]byte, error) {
+	configuredKey := os.Getenv("WEBHOOK_ENCRYPTION_KEY")
+	if len(configuredKey) == KeyBytes {
+		return []byte(configuredKey), nil
+	}
+
+	decodedKey, err := base64.RawStdEncoding.DecodeString(configuredKey)
+	if err != nil {
+		decodedKey, err = base64.StdEncoding.DecodeString(configuredKey)
+	}
+	if err != nil || len(decodedKey) != KeyBytes {
+		return nil, fmt.Errorf("WEBHOOK_ENCRYPTION_KEY must be a 32-byte key or base64-encoded 32-byte key")
+	}
+
+	return decodedKey, nil
+}
 
 const (
-	SecretBytes = 32 
-	KeyBytes    = 32 
-	NonceSize   = 12 
+	SecretBytes = 32
+	KeyBytes    = 32
+	NonceSize   = 12
 )
 
-// GenerateSecret generates a cryptographically secure random 
+// GenerateSecret generates a cryptographically secure random
 // webhook secret and returns it as a base64 string.
 func GenerateSecret() (string, error) {
 	secret := make([]byte, SecretBytes)
@@ -138,4 +156,3 @@ func GenerateEncryptionKey() ([]byte, error) {
 
 	return key, nil
 }
-

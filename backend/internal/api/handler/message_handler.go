@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	queue "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/events"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/parser"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
 	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
@@ -19,11 +17,6 @@ import (
 
 type MessageHandler struct {
 	queries *postgres.Queries
-	publish EventPublisher
-}
-
-type EventPublisher interface {
-	Publish(context.Context, queue.WebhookEvent) error
 }
 
 type MessagePreview struct {
@@ -66,10 +59,9 @@ type Attachment struct {
 	Index       int    `json:"index"`
 }
 
-func NewMessageHandler(q *postgres.Queries, publish EventPublisher) *MessageHandler {
+func NewMessageHandler(q *postgres.Queries) *MessageHandler {
 	return &MessageHandler{
 		queries: q,
-		publish: publish,
 	}
 }
 

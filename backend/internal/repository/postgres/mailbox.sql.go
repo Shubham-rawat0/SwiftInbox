@@ -95,19 +95,35 @@ func (q *Queries) CreateEmailAddress(ctx context.Context, arg CreateEmailAddress
 	return i, err
 }
 
-const deleteExpiredMailbox = `-- name: DeleteExpiredMailbox :one
+const deleteExpiredMailbox = `-- name: DeleteExpiredMailbox :many
 WITH deleted AS (
     DELETE FROM mailboxes 
     WHERE expires_at<$1 RETURNING id
 )
-SELECT COUNT(*)::INT as deleted_count FROM deleted
+SELECT id FROM deleted
 `
 
-func (q *Queries) DeleteExpiredMailbox(ctx context.Context, expiresAt time.Time) (int32, error) {
-	row := q.db.QueryRowContext(ctx, deleteExpiredMailbox, expiresAt)
-	var deleted_count int32
-	err := row.Scan(&deleted_count)
-	return deleted_count, err
+func (q *Queries) DeleteExpiredMailbox(ctx context.Context, expiresAt time.Time) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, deleteExpiredMailbox, expiresAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deleteMailbox = `-- name: DeleteMailbox :one
@@ -131,6 +147,35 @@ func (q *Queries) DeleteMailbox(ctx context.Context, arg DeleteMailboxParams) (D
 	var i DeleteMailboxRow
 	err := row.Scan(&i.ID, &i.Address)
 	return i, err
+}
+
+const getExpiredMailboxIDs = `-- name: GetExpiredMailboxIDs :many
+SELECT id
+FROM mailboxes
+WHERE expires_at < $1
+`
+
+func (q *Queries) GetExpiredMailboxIDs(ctx context.Context, expiresAt time.Time) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, getExpiredMailboxIDs, expiresAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getMailboxCreatedBy = `-- name: GetMailboxCreatedBy :one

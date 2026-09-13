@@ -48,9 +48,14 @@ DELETE FROM mailboxes
 WHERE address = $1 AND created_by = $2
 RETURNING id, address;
 
--- name: DeleteExpiredMailbox :one
+-- name: DeleteExpiredMailbox :many
 WITH deleted AS (
     DELETE FROM mailboxes 
     WHERE expires_at<$1 RETURNING id
 )
-SELECT COUNT(*)::INT as deleted_count FROM deleted;
+SELECT id FROM deleted;
+
+-- name: GetExpiredMailboxIDs :many
+SELECT id
+FROM mailboxes
+WHERE expires_at < $1;
