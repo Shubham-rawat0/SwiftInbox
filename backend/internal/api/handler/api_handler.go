@@ -45,6 +45,35 @@ func (a *ApiHandler) AddApiKey(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, err)
 		return
 	}
+
+	cookie, err := r.Cookie(developerCookieName)
+	if err != nil {
+		WriteError(w, http.StatusUnauthorized, errors.New("developer sign-in required"))
+		return
+	}
+
+	cookieID, signature, err := parseDeveloperCookie(cookie.Value)
+	if err != nil || cookieID != data.DeveloperId {
+		WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
+		return
+	}
+
+	passwordHash, err := a.queries.GetDeveloperPasswordHash(r.Context(), cookieID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
+			return
+		}
+
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to authenticate developer"))
+		return
+	}
+
+	if !utils.Verify([]byte(cookieID.String()), passwordHash, signature) {
+		WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
+		return
+	}
+
 	data.Name = strings.TrimSpace(data.Name)
 	if data.Name == "" {
 		data.Name = "default"
@@ -115,6 +144,34 @@ func (a *ApiHandler) GetApiKeyUsage(w http.ResponseWriter, r *http.Request) {
 	devID, err := uuid.Parse(id)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, errors.New("invalid developer ID"))
+		return
+	}
+
+	cookie, err := r.Cookie(developerCookieName)
+	if err != nil {
+		WriteError(w, http.StatusUnauthorized, errors.New("developer sign-in required"))
+		return
+	}
+
+	cookieID, signature, err := parseDeveloperCookie(cookie.Value)
+	if err != nil || cookieID != devID {
+		WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
+		return
+	}
+
+	passwordHash, err := a.queries.GetDeveloperPasswordHash(r.Context(), devID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
+			return
+		}
+
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to authenticate developer"))
+		return
+	}
+
+	if !utils.Verify([]byte(cookieID.String()), passwordHash, signature) {
+		WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
 		return
 	}
 

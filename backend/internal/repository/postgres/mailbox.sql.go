@@ -149,6 +149,24 @@ func (q *Queries) DeleteMailbox(ctx context.Context, arg DeleteMailboxParams) (D
 	return i, err
 }
 
+const getDeveloperMailboxId = `-- name: GetDeveloperMailboxId :one
+SELECT id
+FROM mailboxes
+WHERE address = $1 AND created_by = $2
+`
+
+type GetDeveloperMailboxIdParams struct {
+	Address   string
+	CreatedBy uuid.NullUUID
+}
+
+func (q *Queries) GetDeveloperMailboxId(ctx context.Context, arg GetDeveloperMailboxIdParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getDeveloperMailboxId, arg.Address, arg.CreatedBy)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getExpiredMailboxIDs = `-- name: GetExpiredMailboxIDs :many
 SELECT id
 FROM mailboxes
@@ -197,6 +215,19 @@ SELECT id from mailboxes where address=$1
 
 func (q *Queries) GetMailboxId(ctx context.Context, address string) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, getMailboxId, address)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getPublicMailboxId = `-- name: GetPublicMailboxId :one
+SELECT id
+FROM mailboxes
+WHERE address = $1 AND created_by IS NULL
+`
+
+func (q *Queries) GetPublicMailboxId(ctx context.Context, address string) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getPublicMailboxId, address)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err

@@ -38,6 +38,16 @@ RETURNING *;
 -- name: GetMailboxId :one
 SELECT id from mailboxes where address=$1;
 
+-- name: GetPublicMailboxId :one
+SELECT id
+FROM mailboxes
+WHERE address = $1 AND created_by IS NULL;
+
+-- name: GetDeveloperMailboxId :one
+SELECT id
+FROM mailboxes
+WHERE address = $1 AND created_by = $2;
+
 -- name: GetMailboxCreatedBy :one
 SELECT created_by
 FROM mailboxes

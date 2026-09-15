@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -65,12 +66,35 @@ func NewMessageHandler(q *postgres.Queries) *MessageHandler {
 	}
 }
 
+func (m *MessageHandler) mailboxAccessError(ctx context.Context, address string) error {
+	if developerID, ok := utils.DeveloperIDFromContext(ctx); ok {
+		_, err := m.queries.GetDeveloperMailboxId(ctx, postgres.GetDeveloperMailboxIdParams{
+			Address:   address,
+			CreatedBy: uuid.NullUUID{UUID: developerID, Valid: true},
+		})
+		return err
+	}
+
+	_, err := m.queries.GetPublicMailboxId(ctx, address)
+	return err
+}
+
 func (m *MessageHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	identifier := r.PathValue("address")
 	address := utils.NormalizeAddress(identifier)
 
+	err := m.mailboxAccessError(r.Context(), address)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, errors.New("mailbox not found"))
+			return
+		}
+
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to find mailbox"))
+		return
+	}
+
 	var data []postgres.GetMessagesRow
-	var err error
 
 	data, err = m.queries.GetMessages(r.Context(), address)
 
@@ -143,6 +167,17 @@ func (m *MessageHandler) GetMessage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if err := m.mailboxAccessError(r.Context(), data.Address); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, errors.New("message not found"))
+			return
+		}
+
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to verify mailbox access"))
+		return
 	}
 
 	parsedMessage := ParsedMessage{
@@ -246,6 +281,16 @@ func (m *MessageHandler) GetAttachment(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError,
 			err,
 		)
+		return
+	}
+
+	if err := m.mailboxAccessError(r.Context(), data.Address); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, errors.New("message not found"))
+			return
+		}
+
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to verify mailbox access"))
 		return
 	}
 
