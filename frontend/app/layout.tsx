@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Header } from "@/components/layout";
+import { Footer } from "@/components/layout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,8 +32,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
-        >
+        > 
+        <Header/>
+    
           {children}
+          <Footer/>
           </ThemeProvider></body>
     </html>
   );

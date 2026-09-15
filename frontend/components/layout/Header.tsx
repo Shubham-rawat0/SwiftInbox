@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation";
 
 export function Header() {
   const { resolvedTheme, setTheme } = useTheme()
@@ -15,6 +16,7 @@ export function Header() {
   }, [])
 
   const isDark = resolvedTheme === "dark"
+  const pathname=usePathname()
 
   const toggleDarkMode = () => {
     setTheme(isDark ? "light" : "dark")
@@ -50,7 +52,7 @@ export function Header() {
         {/* Right side */}
         <div className="flex items-center gap-2 sm:gap-4">
             {/* Developer */}
-          <Link
+          {pathname!=="/developer" && <Link
             href="/developer"
             className="
               flex items-center gap-1.5
@@ -64,7 +66,7 @@ export function Header() {
           >
             <Code2 className="size-5" />
             <span>Developer</span>
-          </Link>
+          </Link>}
           {/* Theme toggle */}
           {mounted ? (
             <button
