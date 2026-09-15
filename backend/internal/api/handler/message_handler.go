@@ -20,6 +20,8 @@ type MessageHandler struct {
 	queries *postgres.Queries
 }
 
+var errDeveloperMailbox = errors.New("this email belongs to a developer mailbox; please choose another mailbox")
+
 type MessagePreview struct {
 	ID        uuid.UUID `json:"id"`
 	Sender    string    `json:"sender"`
@@ -67,15 +69,25 @@ func NewMessageHandler(q *postgres.Queries) *MessageHandler {
 }
 
 func (m *MessageHandler) mailboxAccessError(ctx context.Context, address string) error {
+	var err error
+
 	if developerID, ok := utils.DeveloperIDFromContext(ctx); ok {
-		_, err := m.queries.GetDeveloperMailboxId(ctx, postgres.GetDeveloperMailboxIdParams{
+		_, err = m.queries.GetDeveloperMailboxId(ctx, postgres.GetDeveloperMailboxIdParams{
 			Address:   address,
 			CreatedBy: uuid.NullUUID{UUID: developerID, Valid: true},
 		})
+	} else {
+		_, err = m.queries.GetPublicMailboxId(ctx, address)
+	}
+
+	if err == nil || !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
 
-	_, err := m.queries.GetPublicMailboxId(ctx, address)
+	if _, mailboxErr := m.queries.GetMailboxId(ctx, address); mailboxErr == nil {
+		return errDeveloperMailbox
+	}
+
 	return err
 }
 
@@ -85,6 +97,11 @@ func (m *MessageHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 
 	err := m.mailboxAccessError(r.Context(), address)
 	if err != nil {
+		if errors.Is(err, errDeveloperMailbox) {
+			WriteError(w, http.StatusForbidden, err)
+			return
+		}
+
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, errors.New("mailbox not found"))
 			return
@@ -171,6 +188,11 @@ func (m *MessageHandler) GetMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := m.mailboxAccessError(r.Context(), data.Address); err != nil {
+		if errors.Is(err, errDeveloperMailbox) {
+			WriteError(w, http.StatusForbidden, err)
+			return
+		}
+
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, errors.New("message not found"))
 			return
@@ -285,6 +307,11 @@ func (m *MessageHandler) GetAttachment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := m.mailboxAccessError(r.Context(), data.Address); err != nil {
+		if errors.Is(err, errDeveloperMailbox) {
+			WriteError(w, http.StatusForbidden, err)
+			return
+		}
+
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, errors.New("message not found"))
 			return
