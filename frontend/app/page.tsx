@@ -1,12 +1,20 @@
+
 "use client";
 
 import { useState } from "react";
 import type { SyntheticEvent } from "react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
+const MAIL_DOMAIN = process.env.NEXT_PUBLIC_MAIL_DOMAIN || "temp.mail.at";
 
 export default function Home() {
+  const router = useRouter();
   const [username, setUsername] = useState("");
+  const [existingEmail, setExistingEmail] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [isCheckingMailbox, setIsCheckingMailbox] = useState(false);
 
   const validateUsername = (input: string): string => {
     const beforeAtSign = input.split("@")[0];
@@ -17,8 +25,8 @@ export default function Home() {
       .slice(0, 32);
   };
 
-  const createMailbox = async () => {
-    const cleanUsername = username.trim();
+  const createMailbox = async (requestedUsername = username.trim()) => {
+    const cleanUsername = requestedUsername.trim();
 
     if (!cleanUsername) {
       toast.error("Enter a username first");
@@ -29,7 +37,7 @@ export default function Home() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001"}/api/mailboxes/custom`,
+        `${API_BASE}/api/mailboxes/custom`,
         {
           method: "POST",
           headers: {
@@ -46,7 +54,7 @@ export default function Home() {
       if (response.status === 409) {
         toast.error("Username already taken", {
           description:
-            "This email address already exists. Please choose another username.",
+            "This address already exists. Try another username or open your existing mailbox below.",
           duration: 5000,
         });
         return;
@@ -70,11 +78,11 @@ export default function Home() {
         return;
       }
 
-      toast.success("Mailbox created", {
-        description: "Your temporary email address is ready.",
-      });
+      toast.success("Mailbox created");
 
-      window.location.href = `/mailbox/${encodeURIComponent(cleanUsername)}`;
+      const mailboxAddress = data.address || `${cleanUsername}@${MAIL_DOMAIN}`;
+      const mailboxUsername = mailboxAddress.split("@")[0];
+      router.push(`/mailbox/${encodeURIComponent(mailboxUsername)}`);
     } catch (error) {
       console.error("Error creating mailbox:", error);
 
@@ -91,57 +99,108 @@ export default function Home() {
     createMailbox();
   };
 
-  const emailAddress = `${username || "username"}@temp.mail.at`;
+  const openExistingMailbox = async (e: SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const cleanEmail = existingEmail.trim().toLowerCase();
+
+    if (!cleanEmail) {
+      toast.error("Enter your email address");
+      return;
+    }
+
+    const emailAddress = cleanEmail.includes("@")
+      ? cleanEmail
+      : `${cleanEmail}@${MAIL_DOMAIN}`;
+    const emailUsername = emailAddress.split("@")[0];
+
+    if (!emailUsername) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+
+    setIsCheckingMailbox(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/mailboxes/${encodeURIComponent(emailAddress)}/message`,
+        { method: "POST" }
+      );
+
+      if (response.ok) {
+        router.push(`/mailbox/${encodeURIComponent(emailUsername)}`);
+        return;
+      }
+
+      if (response.status === 404) {
+        const createUsername = validateUsername(emailUsername);
+        setUsername(createUsername);
+        toast.error("Mailbox not found", {
+          description: "Create this temporary mailbox to start using it.",
+          action: {
+            label: "Create mailbox",
+            onClick: () => createMailbox(createUsername),
+          },
+          duration: 8000,
+        });
+        return;
+      }
+
+      toast.error("Could not check mailbox", {
+        description: "Please try again in a moment.",
+      });
+    } catch (error) {
+      console.error("Error checking mailbox:", error);
+      toast.error("Connection failed", {
+        description: "Could not connect to the mail server.",
+      });
+    } finally {
+      setIsCheckingMailbox(false);
+    }
+  };
+
+  const emailAddress = `${username || "username"}@${MAIL_DOMAIN}`;
 
   return (
-    <div className=" bg-[#f7f7f5] text-[#111] dark:bg-[#0b0c0c] dark:text-white">
-    
-      <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl items-center px-5 py-12 sm:px-8 lg:py-20">
+    <div className="min-h-screen bg-[#f7f7f5] text-[#111] dark:bg-[#0b0c0c] dark:text-white">
+
+      {/* Main */}
+      <main className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
         <div className="w-full">
           {/* Hero */}
-          <section className="mx-auto max-w-3xl text-center">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 text-xs font-medium text-black/60 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-white/50">
-              <span className="h-1.5 w-1.5 rounded-full bg-black dark:bg-white" />
-              No signup required
-            </div>
-
-            <h1 className="text-4xl font-black tracking-[-0.04em] sm:text-5xl md:text-6xl">
-              Your inbox.
+          <section className="mx-auto max-w-2xl text-center">
+            <h1 className="font-heading text-[48px] font-bold leading-[1.05] tracking-[-0.04em] sm:text-[64px]">
+              Temporary email.
               <br />
               <span className="text-black/35 dark:text-white/30">
-                Without the noise.
+                Simple and private.
               </span>
             </h1>
 
-            <p className="mx-auto mt-5 max-w-xl text-sm leading-6 text-black/55 dark:text-white/45 sm:text-base">
-              Create a temporary email address instantly. Use it for
-              newsletters, one-time registrations and services you don't
-              want in your personal inbox.
+            <p className="mx-auto mt-6 max-w-xl text-[17px] leading-7 text-black/55 dark:text-white/45 sm:text-[18px]">
+              Create a disposable email address in seconds. Use it for
+              sign-ups, newsletters and services you don&apos;t want connected
+              to your personal inbox.
             </p>
           </section>
 
-          {/* Email Generator */}
-          <section className="mx-auto mt-10 max-w-2xl">
-            <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_20px_70px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-[#111313] dark:shadow-black/30">
+          {/* Create mailbox */}
+          <section className="mx-auto mt-10 max-w-xl">
+            <div className="rounded-[26px] border border-black/[0.08] bg-white shadow-[0_18px_60px_rgba(0,0,0,0.07)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
               <div className="p-5 sm:p-7">
-                <div className="mb-5 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-black/40 dark:text-white/35">
-                      Create address
-                    </p>
-                    <p className="mt-1 text-sm font-medium">
-                      Choose your username
-                    </p>
-                  </div>
+                <div className="mb-5">
+                  <p className="font-heading text-[17px] font-semibold tracking-[-0.01em]">
+                    Create a temporary address
+                  </p>
 
-                  <div className="rounded-lg bg-black/[0.04] px-2.5 py-1.5 text-[11px] font-medium text-black/45 dark:bg-white/[0.05] dark:text-white/40">
-                    24h inbox
-                  </div>
+                  <p className="mt-1 text-[15px] leading-6 text-black/45 dark:text-white/35">
+                    Choose a username for your new mailbox.
+                  </p>
                 </div>
 
                 <form onSubmit={handleSubmit}>
-                  <div className="rounded-2xl border border-black/10 bg-[#f8f8f7] p-2 transition-all focus-within:border-black/30 focus-within:ring-4 focus-within:ring-black/5 dark:border-white/10 dark:bg-[#0b0c0c] dark:focus-within:border-white/30 dark:focus-within:ring-white/5">
-                    <div className="flex items-center">
+                  <div className="rounded-2xl border border-black/[0.09] bg-[#f8f8f7] p-1.5 transition-all focus-within:border-black/20 focus-within:ring-4 focus-within:ring-black/[0.035] dark:border-white/[0.09] dark:bg-[#0b0c0c] dark:focus-within:border-white/20 dark:focus-within:ring-white/[0.035]">
+                    <div className="flex h-[52px] items-center">
                       <input
                         id="mail"
                         type="text"
@@ -152,114 +211,113 @@ export default function Home() {
                         onChange={(e) =>
                           setUsername(validateUsername(e.target.value))
                         }
-                        className="min-w-0 flex-1 bg-transparent px-4 py-3 text-base font-semibold outline-none placeholder:text-black/25 disabled:cursor-not-allowed disabled:opacity-50 dark:placeholder:text-white/20"
+                        className="min-w-0 flex-1 bg-transparent px-4 text-[17px] font-medium outline-none placeholder:text-black/25 disabled:opacity-50 dark:placeholder:text-white/20"
                       />
 
-                      <span className="hidden shrink-0 pr-2 text-sm font-medium text-black/35 sm:block dark:text-white/30">
-                        @temp.abhi.at
+                      <span className="hidden shrink-0 pr-3 text-[15px] text-black/35 sm:block dark:text-white/30">
+                        @{MAIL_DOMAIN}
                       </span>
 
                       <button
                         type="submit"
-                        disabled={isCreating || !username.trim()}
-                        className="flex h-11 shrink-0 items-center gap-2 rounded-xl bg-black px-4 text-sm font-semibold text-white transition-all hover:bg-black/80 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-30 dark:bg-white dark:text-black dark:hover:bg-white/85"
+                        disabled={isCreating || isCheckingMailbox || !username.trim()}
+                        className="h-[44px] shrink-0 rounded-xl bg-black px-5 text-[14px] font-semibold text-white transition hover:bg-black/80 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-30 dark:bg-white dark:text-black dark:hover:bg-white/85"
                       >
-                        {isCreating ? (
-                          <>
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white dark:border-black/20 dark:border-t-black" />
-                            Creating
-                          </>
-                        ) : (
-                          <>
-                            Create
-                            <svg
-                              width="15"
-                              height="15"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                            >
-                              <path
-                                d="M5 12H19M19 12L12 5M19 12L12 19"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </>
-                        )}
+                        {isCreating ? "Creating..." : "Create mailbox"}
                       </button>
                     </div>
                   </div>
                 </form>
 
-                {/* Preview */}
-                <div className="mt-4 rounded-2xl border border-dashed border-black/10 px-4 py-3 dark:border-white/10">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-black/30 dark:text-white/25">
-                    Your temporary address
+                {/* Address preview */}
+                <div className="mt-4 rounded-xl bg-black/[0.025] px-4 py-3 dark:bg-white/[0.035]">
+                  <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-black/30 dark:text-white/25">
+                    Your address
                   </p>
 
-                  <p className="mt-1 break-all font-mono text-sm font-semibold text-black/70 dark:text-white/70">
+                  <p className="mt-1.5 break-all font-mono text-[15px] font-medium text-black/65 dark:text-white/60">
                     {emailAddress}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid border-t border-black/5 bg-black/[0.015] sm:grid-cols-3 dark:border-white/5 dark:bg-white/[0.015]">
-                <div className="border-b border-black/5 px-5 py-4 sm:border-b-0 sm:border-r dark:border-white/5">
-                  <p className="text-xs font-semibold">Instant</p>
-                  <p className="mt-1 text-[11px] leading-4 text-black/40 dark:text-white/30">
-                    No account or password required.
-                  </p>
-                </div>
-
-                <div className="border-b border-black/5 px-5 py-4 sm:border-b-0 sm:border-r dark:border-white/5">
-                  <p className="text-xs font-semibold">Disposable</p>
-                  <p className="mt-1 text-[11px] leading-4 text-black/40 dark:text-white/30">
-                    Messages are automatically cleaned up.
-                  </p>
-                </div>
-
-                <div className="px-5 py-4">
-                  <p className="text-xs font-semibold">Simple</p>
-                  <p className="mt-1 text-[11px] leading-4 text-black/40 dark:text-white/30">
-                    Use it for unwanted subscriptions.
                   </p>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Warning */}
-          <section className="mx-auto mt-8 max-w-2xl">
-            <div className="flex gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4 dark:border-amber-400/10 dark:bg-amber-400/[0.03]">
-              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <path
-                    d="M12 9V13M12 17H12.01M10.3 4.6L2.7 18C2 19.3 2.9 21 4.4 21H19.6C21.1 21 22 19.3 21.3 18L13.7 4.6C13 3.3 11 3.3 10.3 4.6Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+          {/* Existing mailbox */}
+          <section className="mx-auto mt-5 max-w-xl">
+            <div className="rounded-[22px] border border-black/[0.07] bg-white/70 p-5 dark:border-white/[0.07] dark:bg-white/[0.025] sm:p-6">
+              <div className="mb-4">
+                  <p className="font-heading text-[17px] font-semibold">
+                  Already have a mailbox?
+                </p>
+
+                <p className="mt-1 text-[15px] leading-6 text-black/45 dark:text-white/35">
+                  Enter your existing temporary email address to open your
+                  inbox.
+                </p>
               </div>
 
-              <div>
-                <p className="text-xs font-semibold">
-                  Don't use this for sensitive information
-                </p>
-                <p className="mt-1 text-xs leading-5 text-black/45 dark:text-white/35">
-                  Temporary mailboxes are public and disposable. Avoid
-                  passwords, personal information, financial data or
-                  anything you need to keep private.
-                </p>
-              </div>
+              <form
+                onSubmit={openExistingMailbox}
+                className="flex flex-col gap-2.5 sm:flex-row"
+              >
+                <input
+                  type="text"
+                  value={existingEmail}
+                  autoComplete="off"
+                  placeholder={`yourname@${MAIL_DOMAIN}`}
+                  disabled={isCheckingMailbox}
+                  onChange={(e) => setExistingEmail(e.target.value)}
+                  className="h-12 min-w-0 flex-1 rounded-xl border border-black/[0.09] bg-[#f8f8f7] px-3.5 text-[16px] outline-none transition focus:border-black/20 focus:ring-4 focus:ring-black/[0.035] dark:border-white/[0.09] dark:bg-[#0b0c0c] dark:focus:border-white/20 dark:focus:ring-white/[0.035]"
+                />
+
+                <button
+                  type="submit"
+                  disabled={isCheckingMailbox}
+                  className="h-12 rounded-xl border border-black/10 bg-white px-5 text-[14px] font-semibold transition hover:bg-black/[0.03] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
+                >
+                  {isCheckingMailbox ? "Checking..." : "Open mailbox"}
+                </button>
+              </form>
+            </div>
+          </section>
+
+          {/* Features */}
+          <section className="mx-auto mt-10 grid max-w-xl gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-black/[0.06] bg-white/50 p-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
+              <p className="text-[15px] font-semibold">Instant</p>
+              <p className="mt-1.5 text-[14px] leading-5 text-black/45 dark:text-white/35">
+                Create an inbox without an account.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-black/[0.06] bg-white/50 p-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
+              <p className="text-[15px] font-semibold">Disposable</p>
+              <p className="mt-1.5 text-[14px] leading-5 text-black/45 dark:text-white/35">
+                Messages are automatically removed.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-black/[0.06] bg-white/50 p-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
+              <p className="text-[15px] font-semibold">24 hours</p>
+              <p className="mt-1.5 text-[14px] leading-5 text-black/45 dark:text-white/35">
+                Mailboxes expire after one day.
+              </p>
+            </div>
+          </section>
+
+          {/* Warning */}
+          <section className="mx-auto mt-8 max-w-xl">
+            <div className="rounded-2xl border border-amber-500/[0.12] bg-amber-500/[0.035] px-4 py-3.5 dark:border-amber-400/[0.10] dark:bg-amber-400/[0.025]">
+              <p className="text-[14px] font-semibold text-amber-700 dark:text-amber-400">
+                Important
+              </p>
+
+              <p className="mt-1 text-[14px] leading-6 text-black/50 dark:text-white/40">
+                Temporary mailboxes are public. Do not use them for
+                passwords, personal information, financial data or anything
+                sensitive.
+              </p>
             </div>
           </section>
         </div>
