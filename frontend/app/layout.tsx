@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Header } from "@/components/layout";
 import { Footer } from "@/components/layout";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,6 +43,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     
           {children}
           <Footer/>
+          <Toaster
+            richColors
+            position="top-center"
+            duration={3000}
+            closeButton
+            swipeDirections={["top", "left", "right"]}
+          />
           </ThemeProvider></body>
     </html>
   );

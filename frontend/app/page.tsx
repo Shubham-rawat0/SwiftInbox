@@ -55,7 +55,7 @@ export default function Home() {
         toast.error("Username already taken", {
           description:
             "This address already exists. Try another username or open your existing mailbox below.",
-          duration: 5000,
+          duration: 3000,
         });
         return;
       }
@@ -65,7 +65,7 @@ export default function Home() {
           description:
             data.error ||
             "Too many mailboxes created. Please try again after 1 hour.",
-          duration: 5000,
+          duration: 3000,
         });
         return;
       }
@@ -141,7 +141,7 @@ export default function Home() {
             label: "Create mailbox",
             onClick: () => createMailbox(createUsername),
           },
-          duration: 8000,
+          duration: 3000,
         });
         return;
       }
@@ -165,7 +165,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#f7f7f5] text-[#111] dark:bg-[#0b0c0c] dark:text-white">
 
       {/* Main */}
-      <main className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
+      <main className="mx-auto max-w-6xl px-5 py-6 lg:px-8 lg:py-5">
         <div className="w-full">
           {/* Hero */}
           <section className="mx-auto max-w-2xl text-center">
@@ -307,7 +307,7 @@ export default function Home() {
           </section>
 
           {/* Warning */}
-          <section className="mx-auto mt-8 max-w-xl">
+          <section className="mx-auto mt-8 mb-10 max-w-xl">
             <div className="rounded-2xl border border-amber-500/[0.12] bg-amber-500/[0.035] px-4 py-3.5 dark:border-amber-400/[0.10] dark:bg-amber-400/[0.025]">
               <p className="text-[14px] font-semibold text-amber-700 dark:text-amber-400">
                 Important
