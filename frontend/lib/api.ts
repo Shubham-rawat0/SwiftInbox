@@ -86,8 +86,18 @@ export async function createCustomMailbox(username: string): Promise<{ address: 
 
                 throw new Error(`Failed to create custom mailbox: ${response.status} ${errorData.error || response.statusText}`);
             }
+            const data = await response.json();
+            const result = {
+                address: data.address,
+                createdAt: data.createdAt,
+                expiresAt: data.expiresAt
+            };
+
+            setCachedData(cacheKey, result);
+            return result;
         } catch (error) {
-            
+            console.error('Error creating custom mailbox:', error);
+            throw error;
         }
-    })
+    });
 }
