@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { SyntheticEvent } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { trackEvent } from "@/lib/posthog";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 const MAIL_DOMAIN = process.env.NEXT_PUBLIC_MAIL_DOMAIN || "temp.mail.at";
@@ -36,6 +37,11 @@ export default function Home() {
     setIsCreating(true);
 
     try {
+      trackEvent('mailbox_creation_attempt', {
+                            username: username.trim(),
+                            method: 'enter_key'
+                          });
+                          
       const response = await fetch(
         `${API_BASE}/api/mailboxes/custom`,
         {
@@ -231,11 +237,11 @@ export default function Home() {
 
                 {/* Address preview */}
                 <div className="mt-4 rounded-xl bg-black/[0.025] px-4 py-3 dark:bg-white/[0.035]">
-                  <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-black/30 dark:text-white/25">
+                  <p className="text-[14px] font-medium uppercase tracking-[0.08em] text-black/70 dark:text-white/25">
                     Your address
                   </p>
 
-                  <p className="mt-1.5 break-all font-mono text-[15px] font-medium text-black/65 dark:text-white/60">
+                  <p className="mt-1.5 break-all font-mono text-[12px] font-medium text-black/50 dark:text-white/60">
                     {emailAddress}
                   </p>
                 </div>
