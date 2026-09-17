@@ -3,24 +3,24 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 import type { Message, MessageDetail } from './types';
 import { toast } from 'sonner';
 
-const requestCache=new Map<string,{data:any,timestamps:number}>();
-const pendingRequests=new Map<string,Promise<any>>()
-const CACHE_DURATION=6000
+const requestCache = new Map<string, { data: any, timestamps: number }>();
+const pendingRequests = new Map<string, Promise<any>>()
+const CACHE_DURATION = 6000
 
-const getCachedData=(key:string)=>{
-    const cached=requestCache.get(key)
-    if (cached && Date.now()-cached.timestamps<6000){
-        console.log("cached hit for",key)
+const getCachedData = (key: string) => {
+    const cached = requestCache.get(key)
+    if (cached && Date.now() - cached.timestamps < 6000) {
+        console.log("cached hit for", key)
         return cached.data
     }
     return null
 }
 
-const setCachedData=(key:string,data:any)=>{
-    requestCache.set(key,{data:data,timestamps:Date.now()})
+const setCachedData = (key: string, data: any) => {
+    requestCache.set(key, { data: data, timestamps: Date.now() })
 }
 
-export function clearCache(){
+export function clearCache() {
     requestCache.clear()
     pendingRequests.clear()
     console.log("deleted cached data")
@@ -36,17 +36,17 @@ export function clearCacheForAddress(address: string) {
     console.log(`Cache cleared for address: ${address}`);
 }
 
-function deduplicate<T>(key:string,request:()=>Promise<T>): Promise<T> {
-    if (pendingRequests.has(key)){
+function deduplicate<T>(key: string, request: () => Promise<T>): Promise<T> {
+    if (pendingRequests.has(key)) {
         return pendingRequests.get(key)!
     }
 
     //finally return promise(appi result) and does cleanup
-    const promise=request().finally(()=>{
+    const promise = request().finally(() => {
         pendingRequests.delete(key)
     })
 
-    pendingRequests.set(key,promise)
+    pendingRequests.set(key, promise)
     return promise
 }
 
@@ -58,9 +58,9 @@ export async function createCustomMailbox(username: string): Promise<{ address: 
         return cached;
     }
 
-    return deduplicate(cacheKey , async()=>{
+    return deduplicate(cacheKey, async () => {
         try {
-            const cacheBuster=`?_=${Date.now()}`//changes url so browser won't cache
+            const cacheBuster = `?_=${Date.now()}`//changes url so browser won't cache
 
             const response = await fetch(`${API_BASE}/api/mailboxes/custom${cacheBuster}`, {
                 method: 'POST',
@@ -125,7 +125,7 @@ export async function fetchMessages(address: string, forceRefresh = false): Prom
             }
 
             const cacheBuster = forceRefresh ? `?_=${Date.now()}` : '';
-            const response = await fetch(`${API_BASE}/api/mailboxes/${encodeURIComponent(address)}/messages${cacheBuster}`, {
+            const response = await fetch(`${API_BASE}/api/mailboxes/${encodeURIComponent(address)}/message${cacheBuster}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -143,8 +143,7 @@ export async function fetchMessages(address: string, forceRefresh = false): Prom
                         duration: 5000,
                     });
 
-                    const fallbackData = { messages: [] };
-                    return fallbackData;
+                    throw new Error('Rate limit exceeded');
                 }
 
                 throw new Error(`Failed to fetch messages: ${response.status} ${errorData.error || response.statusText}`);
@@ -170,7 +169,7 @@ export async function fetchMessage(messageId: string): Promise<MessageDetail> {
 
     return deduplicate(cacheKey, async () => {
         try {
-            const response = await fetch(`${API_BASE}/api/messages/${messageId}`, {
+            const response = await fetch(`${API_BASE}/api/message/${messageId}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
