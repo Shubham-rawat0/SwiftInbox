@@ -1,6 +1,6 @@
 "use client"
 
-import { Moon, Sun, Star, Mail, Code2 } from "lucide-react"
+import { Moon, Sun, Star, Mail, Code2, LogIn, LogOut, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
@@ -67,6 +67,8 @@ export function Header() {
             <Code2 className="size-5" />
             <span>Developer</span>
           </Link>}
+
+
           {/* Theme toggle */}
           {mounted ? (
             <button
@@ -143,7 +145,31 @@ export function Header() {
               </span>
             </Button>
           </a>
-
+          {pathname === "/developer" && (
+            <div className="ml-1 flex items-center gap-3 border-l border-gray-200 pl-3 dark:border-gray-700">
+              <Link
+                href="/signin"
+                className="flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-950 dark:text-gray-400 dark:hover:text-white"
+              >
+                <LogIn className="size-4" />
+                <span>Sign in</span>
+              </Link>
+              <Link
+                href="/signup"
+                className="flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-950 dark:text-gray-400 dark:hover:text-white"
+              >
+                <UserPlus className="size-4" />
+                <span>Sign up</span>
+              </Link>
+              <Link
+                href="/signout"
+                className="flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-950 dark:text-gray-400 dark:hover:text-white"
+              >
+                <LogOut className="size-4" />
+                <span>Sign out</span>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>

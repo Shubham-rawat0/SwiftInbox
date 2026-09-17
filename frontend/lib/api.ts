@@ -1,6 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
-import type { Message, MessageDetail } from './types';
+import type { CreateDeveloperRequest, DeveloperSignInRequest, DeveloperSignInResponse, Message, MessageDetail } from './types';
 import { toast } from 'sonner';
 
 const requestCache = new Map<string, { data: any, timestamps: number }>();
@@ -199,4 +199,47 @@ export async function fetchMessage(messageId: string): Promise<MessageDetail> {
             throw error;
         }
     });
+}
+
+async function getApiError(response: Response, fallback: string): Promise<Error> {
+    const data = await response.json().catch(() => ({}));
+    return new Error(data.error || `${fallback}: ${response.status} ${response.statusText}`);
+}
+
+export async function createDeveloper(developer: CreateDeveloperRequest): Promise<void> {
+    const response = await fetch(`${API_BASE}/api/dev/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(developer),
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to create developer account');
+    }
+}
+
+export async function signInDeveloper(credentials: DeveloperSignInRequest): Promise<DeveloperSignInResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/signin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(credentials),
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to sign in');
+    }
+
+    return response.json();
+}
+
+export async function signOutDeveloper(): Promise<void> {
+    const response = await fetch(`${API_BASE}/api/dev/signout`, {
+        method: 'POST',
+        credentials: 'include',
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to sign out');
+    }
 }

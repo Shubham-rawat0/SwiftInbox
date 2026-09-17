@@ -63,6 +63,15 @@ export interface DeveloperSignInResponse {
     email: string;
 }
 
+export interface DeveloperSignInRequest {
+    email: string;
+    password: string;
+}
+
+export interface CreateDeveloperRequest extends DeveloperSignInRequest {
+    name: string;
+}
+
 export interface DeveloperDetailsResponse {
     Name: string;
     Email: string;
