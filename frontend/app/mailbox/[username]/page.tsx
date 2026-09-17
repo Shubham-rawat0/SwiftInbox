@@ -1,6 +1,6 @@
 "use client"
 import { useParams } from "next/navigation"
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { RefreshCw as Refresh, Lock, ArrowRightLeft,Copy, Check  } from "lucide-react"
 import Link from "next/link"
@@ -23,10 +23,23 @@ export default function MailboxPage() {
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [apiErrorState, setApiErrorState] = useState(false)
   const [hasStableEmails, setHasStableEmails] = useState(false)
-  const [stableEmailCount, setStableEmailCount] = useState(0)
+  const [unchangedPolls, setUnchangedPolls] = useState(0)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const lastEmailCountRef = useRef<number>(0)
+  const lastEmailSignatureRef = useRef("")
   const requestInFlightRef = useRef(false)
+
+  useLayoutEffect(() => {
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+
+    resetScroll();
+    const frame = window.requestAnimationFrame(resetScroll);
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [username]);
 
   const loadEmails = async (forceRefresh = false) => {
     if ((apiErrorState && failedAttempts >= 5) || requestInFlightRef.current) {
@@ -42,14 +55,15 @@ export default function MailboxPage() {
       const newEmails = result.messages || [];
       setEmails(newEmails);
       
-      const currentCount = newEmails.length;
-      if (currentCount > 0 && currentCount === lastEmailCountRef.current) {
-        setStableEmailCount(prev => prev + 1);
+      const emailSignature = newEmails.map(email => email.id).join(",");
+      if (emailSignature && emailSignature === lastEmailSignatureRef.current) {
+        // to increase polling from 45 sec to 2 min if email count doesn't change
+        setUnchangedPolls(prev => prev + 1); 
       } else {
-        setStableEmailCount(0);
+        setUnchangedPolls(0);
         setHasStableEmails(false);
       }
-      lastEmailCountRef.current = currentCount;
+      lastEmailSignatureRef.current = emailSignature;
       
       if (failedAttempts > 0) {
         setFailedAttempts(0);
@@ -77,10 +91,10 @@ export default function MailboxPage() {
   }
 
   useEffect(() => {
-      if (stableEmailCount >= 3 && lastEmailCountRef.current > 0) {
+      if (unchangedPolls >= 3 && lastEmailSignatureRef.current) {
         setHasStableEmails(true)
       }
-  }, [stableEmailCount])
+  }, [unchangedPolls])
 
   useEffect(() => {
      loadEmails(true)
@@ -124,7 +138,7 @@ export default function MailboxPage() {
     setApiErrorState(false);
     setFailedAttempts(0);
     setHasStableEmails(false);
-    setStableEmailCount(0);
+    setUnchangedPolls(0);
     setIsListening(true);
 
     toast("Refreshing mailbox...", {
@@ -454,7 +468,7 @@ return (
   <>
   {/* mobile view */}
   <div className="md:hidden flex flex-col min-h-screen">
-        <main className="flex-1 bg-white dark:bg-[#0D0E0E] overflow-y-auto">
+        <main className="flex-1 bg-white dark:bg-[#0D0E0E]">
           <div className="max-w-4xl mx-auto px-4 py-4 sm:px-6 lg:px-8 sm:py-8">
             <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 mb-6 sm:mb-8">
               <MailboxHeader />
@@ -472,7 +486,7 @@ return (
   <div className="hidden md:block font-sans antialiased">
     <div className="bg-white dark:bg-zinc-900/60 relative z-10 min-h-screen flex flex-col">
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1">
         <div className="max-w-5xl mx-auto px-6 lg:px-8 py-10">
 
           {/* Mailbox Header */}
