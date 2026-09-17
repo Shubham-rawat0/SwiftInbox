@@ -1,11 +1,19 @@
 "use client"
 
-import { Moon, Sun, Star, Mail, Code2, LogIn, LogOut, UserPlus } from "lucide-react"
+import {
+  Moon,
+  Sun,
+  Star,
+  Mail,
+  Code2,
+  LogIn,
+  LogOut,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation";
+import { usePathname } from "next/navigation"
 
 export function Header() {
   const { resolvedTheme, setTheme } = useTheme()
@@ -16,7 +24,7 @@ export function Header() {
   }, [])
 
   const isDark = resolvedTheme === "dark"
-  const pathname=usePathname()
+  const pathname = usePathname()
 
   const toggleDarkMode = () => {
     setTheme(isDark ? "light" : "dark")
@@ -26,48 +34,46 @@ export function Header() {
     <header className="sticky top-0 z-50 h-16 min-h-[64px] border-b border-gray-200 bg-gray-50 text-gray-950 dark:border-gray-800 dark:bg-[#111313] dark:text-white">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
 
-        {/* Left side */}
-        <div className="flex items-center gap-6">
+        {/* Logo */}
+        <Link
+          href="/"
+          className="group flex items-center gap-2.5"
+          aria-label="TempMail home"
+        >
+          <div className="flex size-9 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm transition-colors group-hover:bg-gray-100 dark:border-gray-700 dark:bg-[#191b1b] dark:group-hover:bg-[#202222]">
+            <Mail
+              className="size-[18px] text-gray-700 dark:text-gray-200"
+              strokeWidth={2}
+            />
+          </div>
 
-          {/* Logo */}
-          <Link
-            href="/"
-            className="group flex items-center gap-2.5"
-            aria-label="TempMail home"
-          >
-            <div className="flex size-9 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm transition-colors group-hover:bg-gray-100 dark:border-gray-700 dark:bg-[#191b1b] dark:group-hover:bg-[#202222]">
-              <Mail
-                className="size-[18px] text-gray-700 dark:text-gray-200"
-                strokeWidth={2}
-              />
-            </div>
-
-            <span className="font-custom text-xl font-semibold tracking-tight">
-              TempMail
-            </span>
-          </Link>
-
-        </div>
+          <span className="font-custom text-xl font-semibold tracking-tight">
+            TempMail
+          </span>
+        </Link>
 
         {/* Right side */}
-        <div className="flex items-center gap-2 sm:gap-4">
-            {/* Developer */}
-          {pathname!=="/developer" && <Link
-            href="/developer"
-            className="
-              flex items-center gap-1.5
-              text-sm font-medium
-              text-gray-600
-              transition-colors
-              hover:text-gray-950
-              dark:text-gray-400
-              dark:hover:text-white
-            "
-          >
-            <Code2 className="size-5" />
-            <span>Developer</span>
-          </Link>}
+        <div className="flex items-center gap-2 sm:gap-3">
 
+          {/* Developer */}
+          {pathname !== "/developer" && (
+            <Link
+              href="/developer"
+              className="
+                flex items-center gap-1.5
+                px-1.5 py-2
+                text-sm font-medium
+                text-gray-600
+                transition-colors
+                hover:text-gray-950
+                dark:text-gray-400
+                dark:hover:text-white
+              "
+            >
+              <Code2 className="size-4.5" />
+              <span className="hidden sm:inline">Developer</span>
+            </Link>
+          )}
 
           {/* Theme toggle */}
           {mounted ? (
@@ -80,8 +86,7 @@ export function Header() {
               className={`
                 relative inline-flex h-7 w-12 shrink-0
                 items-center rounded-full
-                border
-                transition-colors
+                border transition-colors
                 focus-visible:outline-none
                 focus-visible:ring-2
                 focus-visible:ring-gray-400
@@ -97,11 +102,7 @@ export function Header() {
                   flex size-5 items-center justify-center
                   rounded-full bg-white shadow-sm
                   transition-transform duration-200
-                  ${
-                    isDark
-                      ? "translate-x-6"
-                      : "translate-x-1"
-                  }
+                  ${isDark ? "translate-x-6" : "translate-x-1"}
                 `}
               >
                 {isDark ? (
@@ -145,34 +146,51 @@ export function Header() {
               </span>
             </Button>
           </a>
-          {pathname === "/developer" && (
-            <div className="ml-1 flex items-center gap-3 border-l border-gray-200 pl-3 dark:border-gray-700">
-              <Link
-                href="/signin"
-                className="flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-950 dark:text-gray-400 dark:hover:text-white"
-              >
-                <LogIn className="size-4" />
-                <span>Sign in</span>
-              </Link>
-              <Link
-                href="/signup"
-                className="flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-950 dark:text-gray-400 dark:hover:text-white"
-              >
-                <UserPlus className="size-4" />
-                <span>Sign up</span>
-              </Link>
-              <Link
-                href="/signout"
-                className="flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-950 dark:text-gray-400 dark:hover:text-white"
-              >
-                <LogOut className="size-4" />
-                <span>Sign out</span>
-              </Link>
-            </div>
-          )}
+
+          {/* Auth actions */}
+          <div className="ml-1 flex items-center gap-1 border-l border-gray-200 pl-2 sm:gap-2 sm:pl-3 dark:border-gray-700">
+
+            <Link
+              href="/signin"
+              className="
+                flex items-center gap-1.5
+                rounded-md px-2 py-2
+                text-sm font-medium
+                text-gray-600
+                transition-colors
+                hover:bg-gray-100
+                hover:text-gray-950
+                dark:text-gray-400
+                dark:hover:bg-white/[0.05]
+                dark:hover:text-white
+              "
+            >
+              <LogIn className="size-4" />
+              <span className="hidden sm:inline">Sign in</span>
+            </Link>
+
+            <Link
+              href="/signout"
+              className="
+                flex items-center gap-1.5
+                rounded-md px-2 py-2
+                text-sm font-medium
+                text-gray-600
+                transition-colors
+                hover:bg-gray-100
+                hover:text-gray-950
+                dark:text-gray-400
+                dark:hover:bg-white/[0.05]
+                dark:hover:text-white
+              "
+            >
+              <LogOut className="size-4" />
+              <span className="hidden sm:inline">Sign out</span>
+            </Link>
+
+          </div>
         </div>
       </div>
     </header>
   )
 }
-

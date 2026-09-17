@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, UserPlus } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FormEvent, useState } from "react"
+import { SyntheticEvent, useState } from "react"
 import { toast } from "sonner"
 
 export default function SignUpPage() {
@@ -15,7 +15,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsSubmitting(true)
 
@@ -34,9 +34,9 @@ export default function SignUpPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-8rem)] bg-gray-50/80 px-4 py-12 dark:bg-[#0D0E0E] sm:py-20">
+    <main className="bg-gray-50/80 px-4 py-4 dark:bg-[#0D0E0E] sm:pt-3 sm:pb-8">
       <div className="mx-auto w-full max-w-md">
-        <Link href="/developer" className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+        <Link href="/developer" className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
           <ArrowLeft className="size-4" />
           Developer area
         </Link>

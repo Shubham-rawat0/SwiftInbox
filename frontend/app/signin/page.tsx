@@ -32,9 +32,9 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-8rem)] bg-gray-50/80 px-4 py-12 dark:bg-[#0D0E0E] sm:py-20">
+    <main className="bg-gray-50/80 px-4 py-4 dark:bg-[#0D0E0E] sm:py-6">
       <div className="mx-auto w-full max-w-md">
-        <Link href="/developer" className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+        <Link href="/developer" className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
           <ArrowLeft className="size-4" />
           Developer area
         </Link>
