@@ -2,7 +2,7 @@
 import { useParams } from "next/navigation"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { RefreshCw as Refresh, Lock, ArrowRightLeft,Copy  } from "lucide-react"
+import { RefreshCw as Refresh, Lock, ArrowRightLeft,Copy, Check  } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { fetchMessages } from "@/lib/api"
@@ -159,99 +159,128 @@ export default function MailboxPage() {
     }
   }
   
+const EmailAddressDisplay = () => {
+  const [copied, setCopied] = useState(false);
 
-  
-const EmailAddressDisplay = () => (
-  <button
-    type="button"
-    onClick={async () => {
-      const email = `${username}@temp.mail.at`;
+  const handleCopy = async () => {
+    const email = `${username}@temp.mail.at`;
 
-      try {
-        await navigator.clipboard.writeText(email);
+    try {
+      await navigator.clipboard.writeText(email);
 
-        trackEvent("email_copied", {
-          username,
-          method: "email_display_click",
-          email_address: email,
-        });
+      trackEvent("email_copied", {
+        username,
+        method: "email_display_click",
+        email_address: email,
+      });
 
-        toast.success("Email copied to clipboard!");
-      } catch {
-        toast.error("Failed to copy email");
-      }
-    }}
-    className="
-      group inline-flex items-center gap-3
-      px-5 py-2.5 mb-4
-      rounded-full
-      bg-gray-100 border border-gray-200
-      text-gray-900
-      font-semibold text-lg
-      shadow-sm
-      transition-all duration-200
-      hover:bg-gray-200 hover:border-gray-300 hover:shadow-md
-      active:scale-[0.98]
-      cursor-pointer
-      focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
-    "
-    title="Click to copy email address"
-  >
-    <span>{username}@temp.mail.at</span>
+      setCopied(true);
+      toast.success("Email copied to clipboard!");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      toast.error("Failed to copy email");
+    }
+  };
 
-    <Copy
-      size={18}
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      aria-label="Copy email address"
+      title="Click to copy email address"
       className="
-        text-gray-500
-        transition-transform duration-200
-        group-hover:scale-110
+        group relative inline-flex items-center gap-3
+        px-5 py-2.5 mb-4
+        rounded-full
+        bg-white border border-gray-200
+        text-gray-900
+        font-medium 
+        shadow-[0_1px_2px_rgba(0,0,0,0.04)]
+        transition-all duration-200 ease-out
+        hover:border-gray-300 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]
+        active:scale-[0.98]
+        cursor-pointer
+        focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2
       "
-    />
-  </button>
-);
+    >
+      <span className="font-mono tracking-tight text-gray-800">
+        {username}
+        <span className="text-gray-400">@temp.mail.at</span>
+      </span>
 
-
+      <span className="relative flex h-[18px] w-[18px] items-center justify-center shrink-0">
+        <Copy
+          size={18}
+          className={`
+            absolute text-gray-400
+            transition-all duration-200
+            ${copied ? "opacity-0 scale-75" : "opacity-100 scale-100 group-hover:text-gray-600"}
+          `}
+        />
+        <Check
+          size={18}
+          className={`
+            absolute text-emerald-600
+            transition-all duration-200
+            ${copied ? "opacity-100 scale-100" : "opacity-0 scale-75"}
+          `}
+        />
+      </span>
+    </button>
+  );
+};
   
   const ActionButtons = () => (
-    <div className="flex flex-col gap-2 px-2 sm:px-0">
-      <div className="flex flex-row justify-center gap-2 sm:gap-3">
-        <Button
-          className="bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base flex-1 sm:flex-initial sm:min-w-[120px]"
-          onClick={() => {
-            const email = `${username}@temp.mail.at`;
-            navigator.clipboard.writeText(email);
-            trackEvent('email_copied', {
-              username: username,
-              method: 'copy_button',
-              email_address: email
-            });
-            toast.success("Email copied to clipboard!");
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2">
-            <path fillRule="evenodd" clipRule="evenodd" d="M24.7397 9.91727V19.9465C24.7397 21.0543 23.8416 21.9524 22.7338 21.9524C22.1799 21.9524 21.7309 21.5033 21.7309 20.9494V14.27C21.7315 13.9643 21.6085 13.6713 21.3899 13.4576L17.8997 10.0075C17.2774 9.37513 16.4301 9.01459 15.5429 9.00461H11.7017C11.1478 9.00461 10.6987 8.55559 10.6987 8.00169V6.87841C10.6987 6.11327 11.0034 5.37962 11.5454 4.83953C12.0873 4.29943 12.822 3.99735 13.5872 4.00002H18.9127C19.6658 4.00761 20.3859 4.31006 20.9186 4.84247L23.9273 7.85125C24.4625 8.40421 24.7549 9.14788 24.7397 9.91727ZM19.8855 13.929L16.8768 10.9202C16.3453 10.386 15.6244 10.0832 14.8709 10.0777H9.54539C7.95407 10.0833 6.66698 11.3748 6.66699 12.9662V25.1116C6.66699 26.7068 7.96018 28 9.55541 28H17.8697C19.4531 27.9835 20.7281 26.6951 20.728 25.1116V15.9348C20.7358 15.1776 20.4479 14.4472 19.9257 13.8989L19.8855 13.929Z" fill="#ffffff"></path>
-          </svg>
-          Copy
-        </Button>
-        <Link href="/" className="flex-1 sm:flex-initial">
-          <Button className="bg-red-600 hover:bg-red-700 text-white text-sm sm:text-base w-full sm:min-w-[140px]">
-            <ArrowRightLeft className="w-4 h-4 mr-2" />
-            Change Email
-          </Button>
-        </Link>
-        <Button variant="outline" onClick={manualRefresh} className="hidden sm:flex text-sm sm:text-base sm:min-w-[140px]">
-          <Refresh className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
+   <div className="flex flex-col gap-2 px-2 sm:px-0">
+  <div className="flex flex-row justify-center gap-2 sm:gap-3">
+    <Button
+      className="bg-gray-900 hover:bg-gray-800 text-white text-sm sm:text-base flex-1 sm:flex-initial sm:min-w-[120px] shadow-sm transition-colors"
+      onClick={() => {
+        const email = `${username}@temp.mail.at`;
+        navigator.clipboard.writeText(email);
+        trackEvent('email_copied', {
+          username: username,
+          method: 'copy_button',
+          email_address: email
+        });
+        toast.success("Email copied to clipboard!");
+      }}
+    >
+      <Copy className="w-4 h-4 mr-2" />
+      Copy
+    </Button>
 
-      <div className="flex justify-center sm:hidden">
-        <Button variant="outline" onClick={manualRefresh} className="text-sm w-full max-w-[300px]">
-          <Refresh className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
-    </div>
+    <Link href="/" className="flex-1 sm:flex-initial">
+      <Button
+        variant="outline"
+        className="text-sm sm:text-base w-full sm:min-w-[140px] border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+      >
+        <ArrowRightLeft className="w-4 h-4 mr-2" />
+        Change Email
+      </Button>
+    </Link>
+
+    <Button
+      variant="outline"
+      onClick={manualRefresh}
+      className="hidden sm:flex text-sm sm:text-base sm:min-w-[140px] border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+    >
+      <Refresh className="w-4 h-4 mr-2" />
+      Refresh
+    </Button>
+  </div>
+
+  <div className="flex justify-center sm:hidden">
+    <Button
+      variant="outline"
+      onClick={manualRefresh}
+      className="text-sm w-full max-w-[300px] border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+    >
+      <Refresh className="w-4 h-4 mr-2" />
+      Refresh
+    </Button>
+  </div>
+</div>
   );
   
   const MailboxHeader = () => (
@@ -261,88 +290,165 @@ const EmailAddressDisplay = () => (
     </div>
   );
   
-  const EmailsList = () => {
-    if (refreshing) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-          <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg">Refreshing...</p>
-        </div>
-      );
-    }
-    
-    if (apiErrorState && failedAttempts >= 5) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center py-12 border-2 border-dashed border-red-300 dark:border-red-800 rounded-lg">
-          <p className="text-red-500 dark:text-red-400 font-medium text-lg">Server connection error</p>
-          <p className="mt-2 text-gray-500 dark:text-gray-400">Could not connect to the server after multiple attempts.</p>
-          <Button variant="outline" size="sm" onClick={manualRefresh} className="mt-6">
-            Try Again
-          </Button>
-        </div>
-      );
-    }
-    
-    if (emails.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-          <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg">No emails yet. Check back later!</p>
-        </div>
-      );
-    }
-    
+const EmailsList = () => {
+  // Manual refresh
+  if (refreshing) {
     return (
-      <>
-        {Array.from({ length: Math.ceil(emails.length / 2) }, (_, i) => {
+      <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white px-6 py-12 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
+          <Refresh className="h-6 w-6 animate-spin text-gray-500 dark:text-gray-300" />
+        </div>
+
+        <h3 className="mt-5 text-lg font-semibold text-gray-900 dark:text-white">
+          Refreshing mailbox
+        </h3>
+
+        <p className="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">
+          Checking for new messages...
+        </p>
+      </div>
+    );
+  }
+
+  // API permanently failed
+  if (apiErrorState && failedAttempts >= 5) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50/50 px-6 py-12 text-center dark:border-red-900/60 dark:bg-red-950/20">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40">
+          <span className="text-2xl">!</span>
+        </div>
+
+        <h3 className="mt-5 text-lg font-semibold text-gray-900 dark:text-white">
+          Unable to reach the server
+        </h3>
+
+        <p className="mt-2 max-w-md text-sm leading-6 text-gray-500 dark:text-gray-400">
+          We couldn't connect to the mailbox server after several attempts.
+          Your emails are safe. Try refreshing when you're ready.
+        </p>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={manualRefresh}
+          className="mt-6 gap-2 border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800"
+        >
+          <Refresh className="h-4 w-4" />
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  // Empty mailbox
+  if (emails.length === 0) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-gray-50/50 px-6 py-12 text-center dark:border-gray-600 dark:bg-gray-800/50">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            className="h-8 w-8 text-gray-400 dark:text-gray-300"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 8.5 12 14l9-5.5M4.5 5h15A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11A1.5 1.5 0 0 1 4.5 5Z"
+            />
+          </svg>
+        </div>
+
+        <h3 className="mt-5 text-lg font-semibold text-gray-900 dark:text-white">
+          Your inbox is empty
+        </h3>
+
+        <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500 dark:text-gray-400">
+          Emails sent to{" "}
+          <span className="font-medium text-gray-700 dark:text-gray-300">
+            {username}@temp.mail.at
+          </span>{" "}
+          will appear here automatically.
+        </p>
+
+        {isListening && (
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
+            Listening for new emails
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Email list
+  return (
+    <div className="space-y-3">
+      {Array.from(
+        { length: Math.ceil(emails.length / 2) },
+        (_, i) => {
           const email1 = emails[i * 2];
           const email2 = emails[i * 2 + 1];
+
+          const EmailCard = ({ email }: { email: any }) => (
+            <Link
+              href={`/mailbox/${username}/message/${email.id}`}
+              className="group block h-full"
+            >
+              <article
+                className="
+                  h-full rounded-xl border border-gray-200
+                  bg-white p-4 shadow-sm
+                  transition-all duration-200
+                  hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md
+                  dark:border-gray-700 dark:bg-gray-800
+                  dark:hover:border-gray-600
+                "
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="min-w-0 flex-1 truncate text-base font-semibold text-gray-900 dark:text-white">
+                    {email.subject || "(No subject)"}
+                  </h3>
+
+                  <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">
+                    {email.createdAt
+                      ? new Date(email.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : email.time}
+                  </span>
+                </div>
+
+                <p className="mt-2 line-clamp-2 break-words text-sm leading-5 text-gray-500 dark:text-gray-400">
+                  {email.preview || "No preview available"}
+                </p>
+
+                <div className="mt-4 flex items-center text-xs font-medium text-gray-400 transition-colors group-hover:text-gray-700 dark:text-gray-500 dark:group-hover:text-gray-300">
+                  View message
+                  <ArrowRightLeft className="ml-1.5 h-3.5 w-3.5" />
+                </div>
+              </article>
+            </Link>
+          );
+
           return (
-            <div key={i} className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              {email1 && (
-                <Link href={`/mailbox/${username}/message/${email1.id}`}>
-                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 p-3 sm:p-4 rounded-lg hover:shadow-md transition-shadow cursor-pointer bg-white dark:bg-gray-700 h-full">
-                    <h3 className="text-lg sm:text-xl font-semibold mb-1 text-gray-900 dark:text-white break-words">
-                      {email1.subject}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-2">
-                      {email1.createdAt ? new Date(email1.createdAt).toLocaleDateString('en-US', {
-                        month: 'numeric',
-                        day: 'numeric',
-                        year: 'numeric'
-                      }) : email1.time}
-                    </p>
-                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 break-words">
-                      {email1.preview}
-                    </p>
-                  </div>
-                </Link>
-              )}
-              {email2 && (
-                <Link href={`/mailbox/${username}/message/${email2.id}`}>
-                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 p-3 sm:p-4 rounded-lg hover:shadow-md transition-shadow cursor-pointer bg-white dark:bg-gray-700 h-full">
-                    <h3 className="text-lg sm:text-xl font-semibold mb-1 text-gray-900 dark:text-white break-words">
-                      {email2.subject}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-2">
-                      {email2.createdAt ? new Date(email2.createdAt).toLocaleDateString('en-US', {
-                        month: 'numeric',
-                        day: 'numeric',
-                        year: 'numeric'
-                      }) : email2.time}
-                    </p>
-                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 break-words">
-                      {email2.preview}
-                    </p>
-                  </div>
-                </Link>
-              )}
+            <div
+              key={i}
+              className="grid grid-cols-1 gap-3 md:grid-cols-2"
+            >
+              {email1 && <EmailCard email={email1} />}
+              {email2 && <EmailCard email={email2} />}
             </div>
           );
-        })}
-      </>
-    );
-  };
+        }
+      )}
+    </div>
+  );
+};
+
 
 return (
   <div className="hidden md:block font-sans antialiased">
