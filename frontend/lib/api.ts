@@ -158,7 +158,7 @@ export async function fetchMessage(messageId: string): Promise<MessageDetail> {
     return deduplicate(cacheKey, async () => {
         try {
             const response = await fetch(`${API_BASE}/api/message/${messageId}`, {
-                method: 'GET',
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 }
@@ -175,7 +175,7 @@ export async function fetchMessage(messageId: string): Promise<MessageDetail> {
 
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     const retryResponse = await fetch(`${API_BASE}/api/message/${messageId}`, {
-                        method: 'GET',
+                        method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         }

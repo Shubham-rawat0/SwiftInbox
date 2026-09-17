@@ -451,6 +451,24 @@ const EmailsList = () => {
 
 
 return (
+  <>
+  {/* mobile view */}
+  <div className="md:hidden flex flex-col min-h-screen">
+        <main className="flex-1 bg-white dark:bg-[#0D0E0E] overflow-y-auto">
+          <div className="max-w-4xl mx-auto px-4 py-4 sm:px-6 lg:px-8 sm:py-8">
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 mb-6 sm:mb-8">
+              <MailboxHeader />
+            </div>
+                
+            <div className="space-y-3 sm:space-y-4">
+              <EmailsList />
+            </div>
+          </div>
+        </main>
+
+      </div>
+
+{/* desktop view */}
   <div className="hidden md:block font-sans antialiased">
     <div className="bg-white dark:bg-zinc-900/60 relative z-10 min-h-screen flex flex-col">
 
@@ -473,6 +491,7 @@ return (
 
     </div>
   </div>
+  </>
 )
 
 
