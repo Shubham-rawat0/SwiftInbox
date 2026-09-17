@@ -61,7 +61,6 @@ export default function Home() {
         toast.error("Username already taken", {
           description:
             "This address already exists. Try another username or open your existing mailbox below.",
-          duration: 3000,
         });
         return;
       }
@@ -71,7 +70,6 @@ export default function Home() {
           description:
             data.error ||
             "Too many mailboxes created. Please try again after 1 hour.",
-          duration: 3000,
         });
         return;
       }
@@ -147,7 +145,6 @@ export default function Home() {
             label: "Create mailbox",
             onClick: () => createMailbox(createUsername),
           },
-          duration: 3000,
         });
         return;
       }

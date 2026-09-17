@@ -44,10 +44,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
           <Footer/>
           <Toaster
-            richColors
-            position="top-center"
+            position="bottom-right"
             duration={3000}
             closeButton
+            expand={false}
+            visibleToasts={Infinity}
+            toastOptions={{
+              classNames: {
+                toast: "w-[min(calc(100vw-2rem),320px)] font-sans text-sm shadow-lg",
+                title: "font-semibold tracking-normal",
+                description: "text-xs leading-5",
+                success: "border-zinc-200 bg-white text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100",
+                error: "border-red-200 bg-white text-red-600 dark:border-red-900 dark:bg-zinc-900 dark:text-red-400",
+              },
+            }}
             swipeDirections={["top", "left", "right"]}
           />
           </ThemeProvider></body>

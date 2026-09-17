@@ -9,7 +9,7 @@ const CACHE_DURATION = 6000
 
 const getCachedData = (key: string) => {
     const cached = requestCache.get(key)
-    if (cached && Date.now() - cached.timestamps < 6000) {
+    if (cached && Date.now() - cached.timestamps < CACHE_DURATION) {
         console.log("cached hit for", key)
         return cached.data
     }
@@ -41,7 +41,7 @@ function deduplicate<T>(key: string, request: () => Promise<T>): Promise<T> {
         return pendingRequests.get(key)!
     }
 
-    //finally return promise(appi result) and does cleanup
+    //finally return promise(api result) and does cleanup
     const promise = request().finally(() => {
         pendingRequests.delete(key)
     })
@@ -78,7 +78,6 @@ export async function createCustomMailbox(username: string): Promise<{ address: 
                     console.log('Rate limit hit on mailbox creation');
                     toast.error('Rate limit exceeded', {
                         description: errorData.error || 'Too many mailboxes created. Please try again after 1 hour.',
-                        duration: 3000,
                     });
 
                     throw new Error('Rate limit exceeded');
@@ -114,16 +113,6 @@ export async function fetchMessages(address: string, forceRefresh = false): Prom
 
     return deduplicate(cacheKey, async () => {
         try {
-            const username = address.split('@')[0];
-            const mailboxCacheKey = `mailbox-${username}`;
-            if (!getCachedData(mailboxCacheKey)) {
-                try {
-                    await createCustomMailbox(username);
-                } catch (mailboxError) {
-                    console.warn('Mailbox creation failed, continuing with message fetch:', mailboxError);
-                }
-            }
-
             const cacheBuster = forceRefresh ? `?_=${Date.now()}` : '';
             const response = await fetch(`${API_BASE}/api/mailboxes/${encodeURIComponent(address)}/message${cacheBuster}`, {
                 method: 'POST',
@@ -140,7 +129,6 @@ export async function fetchMessages(address: string, forceRefresh = false): Prom
                     console.log('Rate limit hit on message fetch');
                     toast.error('Rate limit exceeded', {
                         description: errorData.error || 'Too many requests. Please slow down.',
-                        duration: 5000,
                     });
 
                     throw new Error('Rate limit exceeded');
@@ -183,11 +171,10 @@ export async function fetchMessage(messageId: string): Promise<MessageDetail> {
                     console.log('Rate limit hit on individual message fetch');
                     toast.error('Rate limit exceeded', {
                         description: errorData.error || 'Too many requests. Please wait a moment.',
-                        duration: 5000,
                     });
 
                     await new Promise(resolve => setTimeout(resolve, 2000));
-                    const retryResponse = await fetch(`${API_BASE}/api/messages/${messageId}`, {
+                    const retryResponse = await fetch(`${API_BASE}/api/message/${messageId}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',

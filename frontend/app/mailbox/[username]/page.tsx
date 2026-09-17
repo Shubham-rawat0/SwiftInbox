@@ -2,7 +2,7 @@
 import { useParams } from "next/navigation"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { RefreshCw as Refresh, Lock, ArrowRightLeft } from "lucide-react"
+import { RefreshCw as Refresh, Lock, ArrowRightLeft,Copy  } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { fetchMessages } from "@/lib/api"
@@ -63,22 +63,10 @@ export default function MailboxPage() {
       setApiErrorState(true);
 
       toast.error(`Cannot reach server right now. Retry ${newFailedAttempts}/5`, {
-        style: {
-          background: 'white',
-          color: 'black',
-          border: '1px solid #ef4444',
-        },
       });
 
       if (newFailedAttempts >= 5) {
-        toast.error("Maximum retry attempts reached. Please refresh the page to try again.", {
-          style: {
-            background: 'white',
-            color: 'black',
-            border: '1px solid #ef4444',
-          },
-          duration: 5000,
-        });
+        toast.error("Maximum retry attempts reached. Please refresh the page to try again.");
         setIsListening(false);
       }
     } finally {
@@ -140,11 +128,6 @@ export default function MailboxPage() {
     setIsListening(true);
 
     toast("Refreshing mailbox...", {
-      style: {
-        background: 'white',
-        color: 'black',
-        border: '1px solid #e5e7eb',
-      },
     });
 
     setRefreshing(true);
@@ -160,11 +143,6 @@ export default function MailboxPage() {
       });
 
       toast.success("Mailbox refreshed!", {
-        style: {
-          background: 'white',
-          color: 'black',
-          border: '1px solid #e5e7eb',
-        },
       });
     } catch (error) {
       const err = error as Error;
@@ -174,11 +152,6 @@ export default function MailboxPage() {
       });
 
       toast.error("Failed to refresh mailbox. Please try again later.", {
-        style: {
-          background: 'white',
-          color: 'black',
-          border: '1px solid #ef4444',
-        },
       });
     } finally {
       setRefreshing(false);
@@ -187,23 +160,57 @@ export default function MailboxPage() {
   }
   
 
-  const EmailAddressDisplay = () => (
-    <div
-      className="inline-flex items-center px-4 py-2 rounded-full bg-gray-300 text-gray-900 font-semibold text-lg mb-4 cursor-pointer hover:bg-gray-400 transition-colors"
-      onClick={() => {
-        const email = `${username}@temp.mail.at`;
-        navigator.clipboard.writeText(email);
-        trackEvent('email_copied', {
-          username: username,
-          method: 'email_display_click',
-          email_address: email
+  
+const EmailAddressDisplay = () => (
+  <button
+    type="button"
+    onClick={async () => {
+      const email = `${username}@temp.mail.at`;
+
+      try {
+        await navigator.clipboard.writeText(email);
+
+        trackEvent("email_copied", {
+          username,
+          method: "email_display_click",
+          email_address: email,
         });
+
         toast.success("Email copied to clipboard!");
-      }}
-    >
-      {username}@temp.mail.at
-    </div>
-  );
+      } catch {
+        toast.error("Failed to copy email");
+      }
+    }}
+    className="
+      group inline-flex items-center gap-3
+      px-5 py-2.5 mb-4
+      rounded-full
+      bg-gray-100 border border-gray-200
+      text-gray-900
+      font-semibold text-lg
+      shadow-sm
+      transition-all duration-200
+      hover:bg-gray-200 hover:border-gray-300 hover:shadow-md
+      active:scale-[0.98]
+      cursor-pointer
+      focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+    "
+    title="Click to copy email address"
+  >
+    <span>{username}@temp.mail.at</span>
+
+    <Copy
+      size={18}
+      className="
+        text-gray-500
+        transition-transform duration-200
+        group-hover:scale-110
+      "
+    />
+  </button>
+);
+
+
   
   const ActionButtons = () => (
     <div className="flex flex-col gap-2 px-2 sm:px-0">
