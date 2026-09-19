@@ -18,6 +18,7 @@ export default function SignOutPage() {
           toast.success("Signed out")
           router.replace("/developer")
         }
+        localStorage.removeItem("developer_id")
       } catch (error) {
         if (active) {
           toast.error("Unable to sign out", {

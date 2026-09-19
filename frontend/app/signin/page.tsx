@@ -20,6 +20,7 @@ export default function SignInPage() {
 
     try {
       const developer = await signInDeveloper({ email: email.trim(), password })
+      localStorage.setItem("developer_id",developer.id)
       toast.success(`Welcome back, ${developer.name}`)
       router.push("/developer")
     } catch (error) {

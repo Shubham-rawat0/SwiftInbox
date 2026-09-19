@@ -148,7 +148,7 @@ export function Header() {
           </a>
 
           {/* Auth actions */}
-          <div className="ml-1 flex items-center gap-1 border-l border-gray-200 pl-2 sm:gap-2 sm:pl-3 dark:border-gray-700">
+        {pathname=="/developer" &&  <div className="ml-1 flex items-center gap-1 border-l border-gray-200 pl-2 sm:gap-2 sm:pl-3 dark:border-gray-700">
 
             <Link
               href="/signin"
@@ -188,7 +188,7 @@ export function Header() {
               <span className="hidden sm:inline">Sign out</span>
             </Link>
 
-          </div>
+          </div>}
         </div>
       </div>
     </header>

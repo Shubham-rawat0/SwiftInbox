@@ -1,24 +1,24 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
-import type { CreateDeveloperRequest, DeveloperSignInRequest, DeveloperSignInResponse, Message, MessageDetail } from './types';
+import type { CreateDeveloperRequest, DeveloperDetailsResponse, DeveloperSignInRequest, DeveloperSignInResponse, Message, MessageDetail } from './types';
 import { toast } from 'sonner';
 
-const requestCache = new Map<string, { data: any, timestamps: number }>();
-const pendingRequests = new Map<string, Promise<any>>()
-const CACHE_DURATION = 6000
+const requestCache = new Map<string, { data: any; timestamp: number; promise?: Promise<any> }>();
+const pendingRequests = new Map<string, Promise<any>>();
+const CACHE_DURATION = 6000;
 
-const getCachedData = (key: string) => {
-    const cached = requestCache.get(key)
-    if (cached && Date.now() - cached.timestamps < CACHE_DURATION) {
-        console.log("cached hit for", key)
-        return cached.data
+const getCachedData = <T>(key: string): T | null => {
+    const cached = requestCache.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        console.log("cached hit for", key);
+        return cached.data as T;
     }
-    return null
-}
+    return null;
+};
 
-const setCachedData = (key: string, data: any) => {
-    requestCache.set(key, { data: data, timestamps: Date.now() })
-}
+const setCachedData = <T>(key: string, data: T) => {
+    requestCache.set(key, { data, timestamp: Date.now() });
+};
 
 export function clearCache() {
     requestCache.clear()
@@ -37,23 +37,24 @@ export function clearCacheForAddress(address: string) {
 }
 
 function deduplicate<T>(key: string, request: () => Promise<T>): Promise<T> {
-    if (pendingRequests.has(key)) {
-        return pendingRequests.get(key)!
+    const existing = pendingRequests.has(key);
+    if (existing) {
+        pendingRequests.get(key)!;
     }
 
     //finally return promise(api result) and does cleanup
     const promise = request().finally(() => {
-        pendingRequests.delete(key)
-    })
+        pendingRequests.delete(key);
+    });
 
-    pendingRequests.set(key, promise)
-    return promise
+    pendingRequests.set(key, promise);
+    return promise;
 }
 
 export async function createCustomMailbox(username: string): Promise<{ address: string; createdAt: string; expiresAt: string | null }> {
     const cacheKey = `mailbox-${username}`;
 
-    const cached = getCachedData(cacheKey);
+    const cached = getCachedData<{ address: string; createdAt: string; expiresAt: string | null }>(cacheKey);
     if (cached) {
         return cached;
     }
@@ -105,7 +106,7 @@ export async function fetchMessages(address: string, forceRefresh = false): Prom
     const cacheKey = `messages-${address}`;
 
     if (!forceRefresh) {
-        const cached = getCachedData(cacheKey);
+        const cached = getCachedData<{ messages: Message[] }>(cacheKey);
         if (cached) {
             return cached;
         }
@@ -150,7 +151,7 @@ export async function fetchMessages(address: string, forceRefresh = false): Prom
 export async function fetchMessage(messageId: string): Promise<MessageDetail> {
     const cacheKey = `message-${messageId}`;
 
-    const cached = getCachedData(cacheKey);
+    const cached = getCachedData<MessageDetail>(cacheKey);
     if (cached) {
         return cached;
     }
@@ -229,7 +230,6 @@ export async function signInDeveloper(credentials: DeveloperSignInRequest): Prom
     if (!response.ok) {
         throw await getApiError(response, 'Unable to sign in');
     }
-
     return response.json();
 }
 
@@ -242,4 +242,26 @@ export async function signOutDeveloper(): Promise<void> {
     if (!response.ok) {
         throw await getApiError(response, 'Unable to sign out');
     }
+}
+
+export async function getDeveloper(): Promise<DeveloperDetailsResponse> {
+    const developerId = localStorage.getItem("developer_id");
+    if (!developerId || developerId.trim().length === 0) {
+        const error = new Error("No developer id found. Please sign in again.");
+        toast.error("Not signed in", {
+            description: "Please sign in again.",
+        });
+        throw error;
+    }
+
+    const response = await fetch(`${API_BASE}/api/dev/${encodeURIComponent(developerId)}`, {
+        method: "GET",
+        credentials: "include",
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to get developer details');
+    }
+
+    return response.json();
 }
