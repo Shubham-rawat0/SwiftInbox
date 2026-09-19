@@ -21,14 +21,21 @@ type DeveloperHandler struct {
 	queries *postgres.Queries
 }
 
-const developerCookieName = "developer_session"
-
-var developerCookieExpiry = time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)
-
 func NewDeveloperHandler(q *postgres.Queries) *DeveloperHandler {
 	return &DeveloperHandler{
 		queries: q,
 	}
+}
+
+type CreateDeveloperBody struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type SignInDeveloperBody struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (a *DeveloperHandler) CreateDeveloper(w http.ResponseWriter, r *http.Request) {
@@ -82,11 +89,6 @@ func (a *DeveloperHandler) CreateDeveloper(w http.ResponseWriter, r *http.Reques
 	}
 
 	WriteJSON(w, http.StatusCreated, developer)
-}
-
-type SignInDeveloperBody struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
 }
 
 func (a *DeveloperHandler) SignIn(w http.ResponseWriter, r *http.Request) {
@@ -159,16 +161,16 @@ func (a *DeveloperHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookieValue := signDeveloperCookie(
+	cookieValue := utils.SignDeveloperCookie(
 		developer.ID,
 		developer.PasswordHash,
 	)
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     developerCookieName,
+		Name:     utils.DeveloperCookieName,
 		Value:    cookieValue,
 		Path:     "/",
-		Expires:  developerCookieExpiry,
+		Expires:  utils.DeveloperCookieExpiry,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})
@@ -187,7 +189,7 @@ func (a *DeveloperHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 
 func (a *DeveloperHandler) SignOut(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     developerCookieName,
+		Name:     utils.DeveloperCookieName,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
@@ -200,38 +202,39 @@ func (a *DeveloperHandler) SignOut(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *DeveloperHandler) GetDeveloper(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
+	devID, ok := utils.DeveloperIDFromContext(r.Context())
+	if !ok {
+		cookie, err := r.Cookie(utils.DeveloperCookieName)
+		if err != nil {
+			WriteError(w, http.StatusUnauthorized, errors.New("developer sign-in required"))
+			return
+		}
 
-	devID, err := uuid.Parse(id)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, errors.New("invalid developer ID"))
-		return
-	}
-
-	cookie, err := r.Cookie(developerCookieName)
-	if err != nil {
-		WriteError(w, http.StatusUnauthorized, errors.New("developer sign-in required"))
-		return
-	}
-
-	cookieID, signature, err := parseDeveloperCookie(cookie.Value)
-	if err != nil || cookieID != devID {
-		WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
-		return
-	}
-
-	passwordHash, err := a.queries.GetDeveloperPasswordHash(r.Context(), devID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		cookieID, signature, err := utils.ParseDeveloperCookie(cookie.Value)
+		if err != nil {
 			WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, errors.New("failed to authenticate developer"))
-		return
+
+		passwordHash, err := a.queries.GetDeveloperPasswordHash(r.Context(), cookieID)
+		if err != nil || !utils.Verify([]byte(cookieID.String()), passwordHash, signature) {
+			WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
+			return
+		}
+		devID = cookieID
 	}
-	if !utils.Verify([]byte(cookieID.String()), passwordHash, signature) {
-		WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
-		return
+
+	pathID := r.PathValue("id")
+	if pathID != "" && pathID != "me" {
+		targetID, err := uuid.Parse(pathID)
+		if err != nil {
+			WriteError(w, http.StatusBadRequest, errors.New("invalid developer id"))
+			return
+		}
+		if targetID != devID {
+			WriteError(w, http.StatusUnauthorized, errors.New("invalid developer session"))
+			return
+		}
 	}
 
 	data, err := a.queries.GetDeveloper(r.Context(), devID)
@@ -246,22 +249,4 @@ func (a *DeveloperHandler) GetDeveloper(w http.ResponseWriter, r *http.Request) 
 	}
 
 	WriteJSON(w, http.StatusOK, data)
-}
-
-func signDeveloperCookie(developerID uuid.UUID, passwordHash string) string {
-	return developerID.String() + "." + utils.Sign([]byte(developerID.String()), passwordHash)
-}
-
-func parseDeveloperCookie(value string) (uuid.UUID, string, error) {
-	developerIDValue, signature, ok := strings.Cut(value, ".")
-	if !ok || signature == "" {
-		return uuid.Nil, "", errors.New("invalid developer session")
-	}
-
-	developerID, err := uuid.Parse(developerIDValue)
-	if err != nil {
-		return uuid.Nil, "", errors.New("invalid developer session")
-	}
-
-	return developerID, signature, nil
 }

@@ -15,13 +15,13 @@ type Router struct {
 }
 
 func NewServerMux(queries *postgres.Queries) *Router {
-
 	mux := http.NewServeMux()
 
 	messageAccessLimiter := middleware.NewRateLimiter(
 		100, time.Minute,
 		"Too many requests from this IP, please slow down",
-		"MESSAGE")
+		"MESSAGE",
+	)
 
 	mailboxLimiter := middleware.NewRateLimiter(
 		10, time.Hour,
@@ -35,6 +35,7 @@ func NewServerMux(queries *postgres.Queries) *Router {
 		"GENERAL",
 	)
 
+	sessionMiddleware := middleware.NewSessionMiddleware(queries)
 	apiMiddlewarehandler := middleware.NewApiMiddlewareHandler(queries)
 
 	messageHandler := handler.NewMessageHandler(queries)
@@ -43,40 +44,88 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	developerHandler := handler.NewDeveloperHandler(queries)
 	webhookHandler := handler.NewWebhookHandler(queries)
 
-	mux.Handle("POST /api/mailboxes/custom", mailboxLimiter.Middleware(utils.WithUsage("mailbox.create", apiMiddlewarehandler.APIKey(http.HandlerFunc(mailboxHandler.CreateEmail)))))
-	mux.Handle("POST /api/mailboxes", mailboxLimiter.Middleware(utils.WithUsage("mailbox.create", apiMiddlewarehandler.APIKey(http.HandlerFunc(mailboxHandler.CreateMailbox)))))
-	mux.Handle("DELETE /api/mailboxes/{address}", mailboxLimiter.Middleware(utils.WithUsage("mailbox.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.DeleteMailbox)))))
-	mux.Handle("GET /api/dev/mailboxes/list/{id}",mailboxLimiter.Middleware(utils.WithUsage("mailbox.list",apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.ListDeveloperMailboxes)))))
+	// =========================================================================
+	// 1. PUBLIC / USER FRONTEND (No auth, rate-limited)
+	// =========================================================================
+	mux.Handle("POST /api/mailboxes/custom", mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateEmail)))
+	mux.Handle("POST /api/mailboxes", mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateMailbox)))
+	mux.Handle("POST /api/mailboxes/{address}/message", messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessages)))
+	mux.Handle("POST /api/message/{id}", messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessage)))
+	mux.Handle("POST /api/message/{id}/attachment/{index}", messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetAttachment)))
 
-	mux.Handle("POST /api/mailboxes/{address}/message", messageAccessLimiter.Middleware(utils.WithUsage("message.list", apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetMessages)))))
-	mux.Handle("POST /api/message/{id}", messageAccessLimiter.Middleware(utils.WithUsage("message.get", apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetMessage)))))
-	mux.Handle("POST /api/message/{id}/attachment/{index}", messageAccessLimiter.Middleware(utils.WithUsage("attachment.get", apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetAttachment)))))
-
-	mux.Handle("POST /api/create", messageAccessLimiter.Middleware(http.HandlerFunc(apiHandler.AddApiKey)))
-	mux.Handle("DELETE /api/revoke", messageAccessLimiter.Middleware(apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(apiHandler.RevokeApiKey))))
+	// Developer registration & sign in/out (Public)
 	mux.Handle("POST /api/dev/create", http.HandlerFunc(developerHandler.CreateDeveloper))
 	mux.Handle("POST /api/dev/signin", http.HandlerFunc(developerHandler.SignIn))
 	mux.Handle("POST /api/dev/signout", http.HandlerFunc(developerHandler.SignOut))
-	mux.Handle("GET /api/dev/{id}", http.HandlerFunc(developerHandler.GetDeveloper))
-	mux.Handle("GET /api/dev/{id}/keys", http.HandlerFunc(apiHandler.GetApiKeyUsage))
 
-	mux.Handle("GET /api/webhooks/dead-letters", utils.WithUsage("webhook.dead_letters", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(apiHandler.GetWebhookDeadLetters))))
-	mux.Handle("POST /api/webhooks/create", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.CreateWebhook))))
-	mux.Handle("POST /api/webhooks/{id}/mailboxes", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.AddMailbox))))
-	mux.Handle("DELETE /api/webhooks/{id}/mailboxes/{mailboxID}", utils.WithUsage("webhook.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.RemoveMailbox))))
-	mux.Handle("GET /api/webhooks", utils.WithUsage("webhook.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.ListWebhooks))))
-	mux.Handle("GET /api/webhooks/{id}", utils.WithUsage("webhook.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.GetWebhook))))
-	mux.Handle("POST /api/webhooks/{id}/test", utils.WithUsage("webhook.test", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.TestWebhook))))
-	mux.Handle("DELETE /api/webhooks/{id}", utils.WithUsage("webhook.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.DeleteWebhook))))
-	mux.Handle("POST /api/webhooks/{id}/events/add", utils.WithUsage("webhook.events.add", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.AddEvents))))
-	mux.Handle("DELETE /api/webhooks/{id}/events/remove", utils.WithUsage("webhook.events.remove", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.RemoveEvents))))
-
+	// Health check
 	mux.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handler.WriteJSON(w, 200, "healthy")
 	}))
 
-	handler := generalLimiter.Middleware(mux)
+	// =========================================================================
+	// 2. DEVELOPER DASHBOARD (/api/dev/* with RequireDeveloperSession)
+	// =========================================================================
+	// Developer Account
+	mux.Handle("GET /api/dev/{id}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(developerHandler.GetDeveloper)))
 
+	// Developer Mailboxes
+	mux.Handle("POST /api/dev/mailboxes", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(mailboxHandler.CreateDeveloperMailbox)))
+	mux.Handle("POST /api/dev/mailboxes/custom", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(mailboxHandler.CreateDeveloperEmail)))
+	mux.Handle("GET /api/dev/mailboxes", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(mailboxHandler.ListDeveloperMailboxes)))
+	mux.Handle("DELETE /api/dev/mailboxes/{identifier}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(mailboxHandler.DeleteDeveloperMailbox)))
+
+	// Developer API Key Management
+	mux.Handle("GET /api/dev/keys", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(apiHandler.GetApiKeyUsage)))
+	mux.Handle("POST /api/dev/keys", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(apiHandler.AddApiKey)))
+
+	mux.Handle("DELETE /api/dev/keys/{id}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(apiHandler.RevokeDeveloperApiKey)))
+
+	// Developer Webhook Management
+	mux.Handle("GET /api/dev/webhooks", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.ListWebhooks)))
+	mux.Handle("POST /api/dev/webhooks", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.CreateWebhook)))
+	mux.Handle("GET /api/dev/webhooks/dead-letters", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.GetDeadLetters)))
+	mux.Handle("GET /api/dev/webhooks/{id}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.GetWebhook)))
+	mux.Handle("DELETE /api/dev/webhooks/{id}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.DeleteWebhook)))
+	mux.Handle("POST /api/dev/webhooks/{id}/mailboxes", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.AddMailbox)))
+	mux.Handle("DELETE /api/dev/webhooks/{id}/mailboxes/{mailboxID}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.RemoveMailbox)))
+	mux.Handle("POST /api/dev/webhooks/{id}/events/add", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.AddEvents)))
+	mux.Handle("DELETE /api/dev/webhooks/{id}/events/remove", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.RemoveEvents)))
+	mux.Handle("POST /api/dev/webhooks/{id}/test", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.TestWebhook)))
+
+	// =========================================================================
+	// 3. EXTERNAL DEVELOPER API (/api/v1/* with RequireAPIKey + WithUsage)
+	// =========================================================================
+	// Mailboxes
+	mux.Handle("POST /api/v1/mailboxes", utils.WithUsage("mailbox.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.CreateAPIMailbox))))
+	mux.Handle("POST /api/v1/mailboxes/custom", utils.WithUsage("mailbox.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.CreateCustomAPIMailbox))))
+	mux.Handle("GET /api/v1/mailboxes", utils.WithUsage("mailbox.list", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.ListAPIMailboxes))))
+	mux.Handle("GET /api/v1/mailboxes/{id}", utils.WithUsage("mailbox.list", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.GetAPIMailbox))))
+	mux.Handle("DELETE /api/v1/mailboxes/{id}", utils.WithUsage("mailbox.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.DeleteAPIMailbox))))
+	mux.Handle("DELETE /api/v1/mailboxes/address/{address}", utils.WithUsage("mailbox.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.DeleteAPIMailbox))))
+
+	// Messages & Attachments
+	mux.Handle("GET /api/v1/mailboxes/{address}/messages", utils.WithUsage("message.list", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(messageHandler.GetMessages))))
+	mux.Handle("POST /api/v1/mailboxes/{address}/message", utils.WithUsage("message.list", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(messageHandler.GetMessages))))
+	mux.Handle("GET /api/v1/messages/{id}", utils.WithUsage("message.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(messageHandler.GetMessage))))
+	mux.Handle("POST /api/v1/message/{id}", utils.WithUsage("message.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(messageHandler.GetMessage))))
+	mux.Handle("GET /api/v1/messages/{id}/attachment/{index}", utils.WithUsage("attachment.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(messageHandler.GetAttachment))))
+	mux.Handle("POST /api/v1/message/{id}/attachment/{index}", utils.WithUsage("attachment.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(messageHandler.GetAttachment))))
+
+	// Webhooks
+	mux.Handle("GET /api/v1/webhooks", utils.WithUsage("webhook.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.ListWebhooks))))
+	mux.Handle("POST /api/v1/webhooks", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.CreateWebhook))))
+	mux.Handle("POST /api/v1/webhooks/create", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.CreateWebhook))))
+	mux.Handle("GET /api/v1/webhooks/dead-letters", utils.WithUsage("webhook.dead_letters", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.GetDeadLetters))))
+	mux.Handle("GET /api/v1/webhooks/{id}", utils.WithUsage("webhook.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.GetWebhook))))
+	mux.Handle("DELETE /api/v1/webhooks/{id}", utils.WithUsage("webhook.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.DeleteWebhook))))
+	mux.Handle("POST /api/v1/webhooks/{id}/mailboxes", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.AddMailbox))))
+	mux.Handle("DELETE /api/v1/webhooks/{id}/mailboxes/{mailboxID}", utils.WithUsage("webhook.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.RemoveMailbox))))
+	mux.Handle("POST /api/v1/webhooks/{id}/events/add", utils.WithUsage("webhook.events.add", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.AddEvents))))
+	mux.Handle("DELETE /api/v1/webhooks/{id}/events/remove", utils.WithUsage("webhook.events.remove", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.RemoveEvents))))
+	mux.Handle("POST /api/v1/webhooks/{id}/test", utils.WithUsage("webhook.test", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.TestWebhook))))
+
+	handler := generalLimiter.Middleware(mux)
 	handler = cors(handler)
 
 	return &Router{
@@ -84,10 +133,7 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	}
 }
 
-func (h *Router) ServeHTTP(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
+func (h *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 

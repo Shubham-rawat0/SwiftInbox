@@ -42,6 +42,12 @@ WHERE wm.webhook_id = w.id
   AND wm.mailbox_id = $2
 RETURNING wm.mailbox_id;
 
+-- name: GetWebhookMailbox :one
+SELECT wm.webhook_id, wm.mailbox_id
+FROM webhook_mailboxes wm
+JOIN webhooks w ON w.id = wm.webhook_id AND w.developer_id = $3
+WHERE wm.webhook_id = $1 AND wm.mailbox_id = $2;
+
 -- name: InsertEvent :one
 UPDATE webhooks
 SET events = ARRAY(

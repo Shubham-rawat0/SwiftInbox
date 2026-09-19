@@ -18,6 +18,13 @@ SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP)
 WHERE id = $1
 RETURNING id, last_used_at, revoked_at;
 
+-- name: RevokeDeveloperApiKey :one
+UPDATE apikeys
+SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP)
+WHERE id = $1 AND developer_id = $2
+RETURNING id, last_used_at, revoked_at;
+
+
 -- name: GetUserApiKeys :many
 
 SELECT

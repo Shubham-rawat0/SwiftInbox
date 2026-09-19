@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -62,7 +61,7 @@ func UsageOperation(ctx context.Context) (string, int, bool) {
 
 func UsageCategory(operation string) string {
 	switch operation {
-	case "mailbox.create", "mailbox.delete","mailbox.list":
+	case "mailbox.create", "mailbox.delete", "mailbox.list":
 		return "mailbox"
 	case "message.list", "message.get", "attachment.get":
 		return "message"
@@ -88,15 +87,4 @@ func WithUsage(operation string, next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-var validEvents = map[string]bool{"email.received": true, "email.deleted": true, "mailbox.expired": true}
-
-func ValidateEvents(events []string) error {
-	for _, event := range events {
-		if !validEvents[event] {
-			return fmt.Errorf("unsupported webhook event: %s", event)
-		}
-	}
-	return nil
 }

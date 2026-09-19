@@ -178,6 +178,31 @@ func (q *Queries) GetWebhook(ctx context.Context, arg GetWebhookParams) (GetWebh
 	return i, err
 }
 
+const getWebhookMailbox = `-- name: GetWebhookMailbox :one
+SELECT wm.webhook_id, wm.mailbox_id
+FROM webhook_mailboxes wm
+JOIN webhooks w ON w.id = wm.webhook_id AND w.developer_id = $3
+WHERE wm.webhook_id = $1 AND wm.mailbox_id = $2
+`
+
+type GetWebhookMailboxParams struct {
+	WebhookID   uuid.UUID
+	MailboxID   uuid.UUID
+	DeveloperID uuid.UUID
+}
+
+type GetWebhookMailboxRow struct {
+	WebhookID uuid.UUID
+	MailboxID uuid.UUID
+}
+
+func (q *Queries) GetWebhookMailbox(ctx context.Context, arg GetWebhookMailboxParams) (GetWebhookMailboxRow, error) {
+	row := q.db.QueryRowContext(ctx, getWebhookMailbox, arg.WebhookID, arg.MailboxID, arg.DeveloperID)
+	var i GetWebhookMailboxRow
+	err := row.Scan(&i.WebhookID, &i.MailboxID)
+	return i, err
+}
+
 const getWebhooksByMailboxID = `-- name: GetWebhooksByMailboxID :many
 SELECT w.id, w.developer_id, w.url, w.secret_encrypted, w.is_active, w.events
 FROM webhooks w

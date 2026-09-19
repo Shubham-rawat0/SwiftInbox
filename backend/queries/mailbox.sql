@@ -75,3 +75,13 @@ SELECT id, address, created_at, expires_at
 FROM mailboxes
 WHERE created_by = $1
 ORDER BY created_at DESC;
+
+-- name: GetDeveloperMailboxByID :one
+SELECT id, address, created_at, expires_at, created_by
+FROM mailboxes
+WHERE id = $1 AND created_by = $2;
+
+-- name: DeleteDeveloperMailboxByID :one
+DELETE FROM mailboxes
+WHERE id = $1 AND created_by = $2
+RETURNING id, address;
