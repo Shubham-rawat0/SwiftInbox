@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import Mailbox from "@/app/developer/mailbox/page"
 
 export function AppSidebar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -67,7 +68,7 @@ export function AppSidebar() {
     >
       {/* Header: title on the left, toggle on the right (icon swaps on hover when collapsed) */}
       <SidebarHeader className="group/sidebar-header h-14 flex-row items-center justify-between px-3 py-0 group-data-[collapsible=icon]:px-2">
-        <span className="truncate px-1 text-[15px] font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+        <span className="truncate px-1 text-[16px] font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
           Overview
         </span>
         <div className="relative size-9 shrink-0">
@@ -92,12 +93,12 @@ export function AppSidebar() {
         <SidebarMenu className="gap-0.5 px-2 pt-1">
           <SidebarMenuItem>
             <SidebarMenuButton
-              render={<Link href="/" />}
+              render={<Link href="/developer" />}
               isActive
               tooltip="Overview"
               className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-active:bg-sidebar-accent data-active:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
             >
-              <Home />
+              <Home/>
               <span>Home</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
