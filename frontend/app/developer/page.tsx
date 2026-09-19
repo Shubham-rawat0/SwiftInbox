@@ -17,6 +17,9 @@ export default function DeveloperPage() {
         const response = await getDeveloper()
         if (isActive) {
           setDeveloper(response)
+          window.dispatchEvent(new CustomEvent("developer-profile-change", {
+            detail: { name: response.Name, email: response.Email },
+          }))
         }
       } catch (error) {
         if (isActive) {
