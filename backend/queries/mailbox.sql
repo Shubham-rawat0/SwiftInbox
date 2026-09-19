@@ -69,3 +69,9 @@ SELECT id FROM deleted;
 SELECT id
 FROM mailboxes
 WHERE expires_at < $1;
+
+-- name: ListDeveloperMailboxes :many
+SELECT id, address, created_at, expires_at
+FROM mailboxes
+WHERE created_by = $1
+ORDER BY created_at DESC;

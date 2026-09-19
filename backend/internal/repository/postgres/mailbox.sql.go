@@ -233,6 +233,48 @@ func (q *Queries) GetPublicMailboxId(ctx context.Context, address string) (uuid.
 	return id, err
 }
 
+const listDeveloperMailboxes = `-- name: ListDeveloperMailboxes :many
+SELECT id, address, created_at, expires_at
+FROM mailboxes
+WHERE created_by = $1
+ORDER BY created_at DESC
+`
+
+type ListDeveloperMailboxesRow struct {
+	ID        uuid.UUID
+	Address   string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+func (q *Queries) ListDeveloperMailboxes(ctx context.Context, createdBy uuid.NullUUID) ([]ListDeveloperMailboxesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDeveloperMailboxes, createdBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDeveloperMailboxesRow
+	for rows.Next() {
+		var i ListDeveloperMailboxesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Address,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertMailbox = `-- name: UpsertMailbox :one
 
 INSERT INTO mailboxes (

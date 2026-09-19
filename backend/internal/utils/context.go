@@ -34,6 +34,7 @@ func APIKeyIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 var usageCosts = map[string]int{
 	"mailbox.create":        1,
 	"message.list":          3,
+	"mailbox.list":          1,
 	"message.get":           3,
 	"attachment.list":       3,
 	"attachment.get":        2,
@@ -61,7 +62,7 @@ func UsageOperation(ctx context.Context) (string, int, bool) {
 
 func UsageCategory(operation string) string {
 	switch operation {
-	case "mailbox.create", "mailbox.delete":
+	case "mailbox.create", "mailbox.delete","mailbox.list":
 		return "mailbox"
 	case "message.list", "message.get", "attachment.get":
 		return "message"

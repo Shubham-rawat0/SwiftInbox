@@ -198,6 +198,34 @@ func (m *MailboxHandler) DeleteMailbox(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (m *MailboxHandler) ListDeveloperMailboxes(w http.ResponseWriter, r *http.Request){
+	id := r.PathValue("id")
+	if id == "" {
+		WriteError(w, http.StatusBadRequest, errors.New("need developer id"))
+		return
+	}
+	Id, err := uuid.Parse(id)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, errors.New("error parsing id"))
+		return
+	}
+	data, err:=m.queries.ListDeveloperMailboxes(r.Context(),uuid.NullUUID{
+		UUID:  Id,
+		Valid: true,
+	})
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, err)
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, errors.New("failed to get mailboxes"))
+		return
+	}
+
+	WriteJSON(w,http.StatusOK,data)
+}
+
 func mailboxExpiresAt(requested *time.Time, isDeveloper bool) (time.Time, int, error) {
 	if requested == nil {
 		if isDeveloper {
@@ -216,3 +244,4 @@ func mailboxExpiresAt(requested *time.Time, isDeveloper bool) (time.Time, int, e
 
 	return requested.UTC(), 0, nil
 }
+

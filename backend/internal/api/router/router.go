@@ -46,6 +46,7 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("POST /api/mailboxes/custom", mailboxLimiter.Middleware(utils.WithUsage("mailbox.create", apiMiddlewarehandler.APIKey(http.HandlerFunc(mailboxHandler.CreateEmail)))))
 	mux.Handle("POST /api/mailboxes", mailboxLimiter.Middleware(utils.WithUsage("mailbox.create", apiMiddlewarehandler.APIKey(http.HandlerFunc(mailboxHandler.CreateMailbox)))))
 	mux.Handle("DELETE /api/mailboxes/{address}", mailboxLimiter.Middleware(utils.WithUsage("mailbox.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.DeleteMailbox)))))
+	mux.Handle("GET /api/dev/mailboxes/list/{id}",mailboxLimiter.Middleware(utils.WithUsage("mailbox.list",apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.ListDeveloperMailboxes)))))
 
 	mux.Handle("POST /api/mailboxes/{address}/message", messageAccessLimiter.Middleware(utils.WithUsage("message.list", apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetMessages)))))
 	mux.Handle("POST /api/message/{id}", messageAccessLimiter.Middleware(utils.WithUsage("message.get", apiMiddlewarehandler.APIKey(http.HandlerFunc(messageHandler.GetMessage)))))
