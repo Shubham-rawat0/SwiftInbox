@@ -2,12 +2,14 @@
 
 import { getDeveloper } from "@/lib/api"
 import { DeveloperDetailsResponse } from "@/lib/types"
+import { useDeveloperProfile } from "@/components/layout/DeveloperProfileContext"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 export default function DeveloperPage() {
   const [developer, setDeveloper] = useState<DeveloperDetailsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const { setProfile } = useDeveloperProfile()
 
   useEffect(() => {
     let isActive = true
@@ -17,9 +19,7 @@ export default function DeveloperPage() {
         const response = await getDeveloper()
         if (isActive) {
           setDeveloper(response)
-          window.dispatchEvent(new CustomEvent("developer-profile-change", {
-            detail: { name: response.Name, email: response.Email },
-          }))
+          setProfile({ name: response.Name, email: response.Email })
         }
       } catch (error) {
         if (isActive) {
@@ -39,7 +39,7 @@ export default function DeveloperPage() {
     return () => {
       isActive = false
     }
-  }, [])
+  }, [setProfile])
 
   if (isLoading) {
     return <div>Loading developer…</div>

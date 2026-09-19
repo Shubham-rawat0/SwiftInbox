@@ -3,7 +3,7 @@ import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Header } from "@/components/layout";
-import { Footer } from "@/components/layout";
+import { RootFooter } from "@/components/layout/RootFooter";
 import { Toaster } from "sonner";
 
 const geistSans = Geist({
@@ -42,7 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Header/>
     
           {children}
-          <Footer/>
+          <RootFooter />
           <Toaster
             position="bottom-right"
             duration={3000}
