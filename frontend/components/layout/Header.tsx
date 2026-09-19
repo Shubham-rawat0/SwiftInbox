@@ -11,16 +11,33 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 export function Header() {
   const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  )
+  const [isDeveloperLoggedIn, setIsDeveloperLoggedIn] = useState(
+    () => typeof window !== "undefined" && Boolean(localStorage.getItem("developer_id")),
+  )
 
   useEffect(() => {
-    setMounted(true)
+    const updateDeveloperSession = () => {
+      setIsDeveloperLoggedIn(Boolean(localStorage.getItem("developer_id")))
+    }
+
+    window.addEventListener("storage", updateDeveloperSession)//trigger when changes made in storage by other tab but not within same tab
+    window.addEventListener("developer-session-change", updateDeveloperSession)//trigger on change within same tab
+
+    return () => {
+      window.removeEventListener("storage", updateDeveloperSession)
+      window.removeEventListener("developer-session-change", updateDeveloperSession)
+    }
   }, [])
 
   const isDark = resolvedTheme === "dark"
@@ -148,45 +165,47 @@ export function Header() {
           </a>
 
           {/* Auth actions */}
-        {pathname=="/developer" &&  <div className="ml-1 flex items-center gap-1 border-l border-gray-200 pl-2 sm:gap-2 sm:pl-3 dark:border-gray-700">
+        {pathname === "/developer" && mounted && <div className="ml-1 flex items-center gap-1 border-l border-gray-200 pl-2 sm:gap-2 sm:pl-3 dark:border-gray-700">
 
-            <Link
-              href="/signin"
-              className="
-                flex items-center gap-1.5
-                rounded-md px-2 py-2
-                text-sm font-medium
-                text-gray-600
-                transition-colors
-                hover:bg-gray-100
-                hover:text-gray-950
-                dark:text-gray-400
-                dark:hover:bg-white/[0.05]
-                dark:hover:text-white
-              "
-            >
-              <LogIn className="size-4" />
-              <span className="hidden sm:inline">Sign in</span>
-            </Link>
-
-            <Link
-              href="/signout"
-              className="
-                flex items-center gap-1.5
-                rounded-md px-2 py-2
-                text-sm font-medium
-                text-gray-600
-                transition-colors
-                hover:bg-gray-100
-                hover:text-gray-950
-                dark:text-gray-400
-                dark:hover:bg-white/[0.05]
-                dark:hover:text-white
-              "
-            >
-              <LogOut className="size-4" />
-              <span className="hidden sm:inline">Sign out</span>
-            </Link>
+            {isDeveloperLoggedIn ? (
+              <Link
+                href="/signout"
+                className="
+                  flex items-center gap-1.5
+                  rounded-md px-2 py-2
+                  text-sm font-medium
+                  text-gray-600
+                  transition-colors
+                  hover:bg-gray-100
+                  hover:text-gray-950
+                  dark:text-gray-400
+                  dark:hover:bg-white/[0.05]
+                  dark:hover:text-white
+                "
+              >
+                <LogOut className="size-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </Link>
+            ) : (
+              <Link
+                href="/signin"
+                className="
+                  flex items-center gap-1.5
+                  rounded-md px-2 py-2
+                  text-sm font-medium
+                  text-gray-600
+                  transition-colors
+                  hover:bg-gray-100
+                  hover:text-gray-950
+                  dark:text-gray-400
+                  dark:hover:bg-white/[0.05]
+                  dark:hover:text-white
+                "
+              >
+                <LogIn className="size-4" />
+                <span className="hidden sm:inline">Sign in</span>
+              </Link>
+            )}
 
           </div>}
         </div>

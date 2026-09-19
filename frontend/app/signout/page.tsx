@@ -19,6 +19,9 @@ export default function SignOutPage() {
           router.replace("/developer")
         }
         localStorage.removeItem("developer_id")
+        localStorage.removeItem("developer_name")
+        localStorage.removeItem("developer_email")
+        window.dispatchEvent(new Event("developer-session-change"))
       } catch (error) {
         if (active) {
           toast.error("Unable to sign out", {

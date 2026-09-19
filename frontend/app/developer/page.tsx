@@ -20,7 +20,7 @@ export default function DeveloperPage() {
         }
       } catch (error) {
         if (isActive) {
-          toast.error("Couldn't get developer", {
+          toast.error("Couldn't find developer", {
             description: error instanceof Error ? error.message : "Please sign in again.",
           })
         }

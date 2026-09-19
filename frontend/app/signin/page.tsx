@@ -2,7 +2,7 @@
 
 import { signInDeveloper } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, LogIn } from "lucide-react"
+import { ArrowLeft, Eye, EyeOff, LogIn } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { SyntheticEvent, useState } from "react"
@@ -12,6 +12,7 @@ export default function SignInPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (event: SyntheticEvent<HTMLFormElement>) => {
@@ -21,6 +22,7 @@ export default function SignInPage() {
     try {
       const developer = await signInDeveloper({ email: email.trim(), password })
       localStorage.setItem("developer_id",developer.id)
+      window.dispatchEvent(new Event("developer-session-change"))
       toast.success(`Welcome back, ${developer.name}`)
       router.push("/developer")
     } catch (error) {
@@ -68,14 +70,24 @@ export default function SignInPage() {
 
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Password
-              <input
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="mt-2 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-200 dark:border-gray-700 dark:bg-[#101111] dark:text-white dark:focus:border-gray-400 dark:focus:ring-white/10"
-              />
+              <div className="relative mt-2">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-900 outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-200 dark:border-gray-700 dark:bg-[#101111] dark:text-white dark:focus:border-gray-400 dark:focus:ring-white/10"
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
             </label>
 
             <Button type="submit" disabled={isSubmitting} className="h-11 w-full">

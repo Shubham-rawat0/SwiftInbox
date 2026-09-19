@@ -247,10 +247,7 @@ export async function signOutDeveloper(): Promise<void> {
 export async function getDeveloper(): Promise<DeveloperDetailsResponse> {
     const developerId = localStorage.getItem("developer_id");
     if (!developerId || developerId.trim().length === 0) {
-        const error = new Error("No developer id found. Please sign in again.");
-        toast.error("Not signed in", {
-            description: "Please sign in again.",
-        });
+        const error = new Error("Please sign in again.");
         throw error;
     }
 
