@@ -301,26 +301,3 @@ func (m *MailboxHandler) DeleteAPIMailbox(w http.ResponseWriter, r *http.Request
 		"id":      result.ID.String(),
 	})
 }
-
-// Backward-compatible delete
-
-func (m *MailboxHandler) DeleteMailbox(w http.ResponseWriter, r *http.Request) {
-	devID, ok := utils.DeveloperIDFromContext(r.Context())
-	if !ok {
-		WriteError(w, http.StatusUnauthorized, errors.New("api key required"))
-		return
-	}
-
-	address := r.PathValue("address")
-	result, err := m.svc.DeleteDeveloperMailbox(r.Context(), devID, address)
-	if err != nil {
-		WriteServiceError(w, err)
-		return
-	}
-
-	WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "mailbox deleted",
-		"address": result.Address,
-		"id":      result.ID.String(),
-	})
-}

@@ -44,9 +44,7 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	developerHandler := handler.NewDeveloperHandler(queries)
 	webhookHandler := handler.NewWebhookHandler(queries)
 
-	// =========================================================================
-	// 1. PUBLIC / USER FRONTEND (No auth, rate-limited)
-	// =========================================================================
+	// 1. PUBLIC (No auth, rate-limited)
 	mux.Handle("POST /api/mailboxes/custom", mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateEmail)))
 	mux.Handle("POST /api/mailboxes", mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateMailbox)))
 	mux.Handle("POST /api/mailboxes/{address}/message", messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessages)))
@@ -63,10 +61,7 @@ func NewServerMux(queries *postgres.Queries) *Router {
 		handler.WriteJSON(w, 200, "healthy")
 	}))
 
-	// =========================================================================
 	// 2. DEVELOPER DASHBOARD (/api/dev/* with RequireDeveloperSession)
-	// =========================================================================
-	// Developer Account
 	mux.Handle("GET /api/dev/{id}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(developerHandler.GetDeveloper)))
 
 	// Developer Mailboxes
@@ -93,10 +88,7 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("DELETE /api/dev/webhooks/{id}/events/remove", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.RemoveEvents)))
 	mux.Handle("POST /api/dev/webhooks/{id}/test", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.TestWebhook)))
 
-	// =========================================================================
 	// 3. EXTERNAL DEVELOPER API (/api/v1/* with RequireAPIKey + WithUsage)
-	// =========================================================================
-	// Mailboxes
 	mux.Handle("POST /api/v1/mailboxes", utils.WithUsage("mailbox.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.CreateAPIMailbox))))
 	mux.Handle("POST /api/v1/mailboxes/custom", utils.WithUsage("mailbox.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.CreateCustomAPIMailbox))))
 	mux.Handle("GET /api/v1/mailboxes", utils.WithUsage("mailbox.list", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(mailboxHandler.ListAPIMailboxes))))
