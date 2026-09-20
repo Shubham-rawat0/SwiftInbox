@@ -14,12 +14,14 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { usePathname } from "next/navigation"
 
 export function AppSidebar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const { profile } = useDeveloperProfile()
+  const pathname=usePathname()
 
   useEffect(() => {
     const updateSession = () => {
@@ -88,34 +90,33 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarMenu className="gap-0.5 px-2 pt-1 gap-y-4">
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              render={<Link href="/developer" />}
-              tooltip="Overview"
-              className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-active:bg-sidebar-accent data-active:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
-            >
-              <Home />
-              <span>Home</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+     <SidebarContent>
+  <SidebarMenu className="gap-0.5 px-2 pt-1 gap-y-4">
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        render={<Link href="/developer" />}
+        isActive={pathname === "/developer"}
+        tooltip="Overview"
+        className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-[active=true]:bg-sidebar-accent data-[active=true]:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
+      >
+        <Home />
+        <span>Home</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
 
-            <SidebarMenuItem>
-            <SidebarMenuButton
-              render={<Link href="/developer/mailbox/mailboxes" />}
-              tooltip="Overview"
-              className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-active:bg-sidebar-accent data-active:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
-            >
-              <Inbox />
-              <span>Mailbox</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-
-
-      </SidebarContent>
-
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        render={<Link href="/developer/mailbox" />}
+        isActive={pathname.startsWith("/developer/mailbox")}
+        tooltip="Mailbox"
+        className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-[active=true]:bg-sidebar-accent data-[active=true]:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
+      >
+        <Inbox />
+        <span>Mailbox</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  </SidebarMenu>
+</SidebarContent>
       <SidebarFooter className="relative z-30 shrink-0 bg-sidebar p-2">
         {isLoggedIn ? (
           <div ref={menuRef} className="relative">

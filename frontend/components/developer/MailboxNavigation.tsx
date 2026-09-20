@@ -7,7 +7,7 @@ import { useLayoutEffect, useRef, useState } from "react"
 const tabs = [
   {
     label: "Mailbox",
-    href: "/developer/mailbox/mailboxes",
+    href: "/developer/mailbox",
   },
   {
     label: "Open",
