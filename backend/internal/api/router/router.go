@@ -47,9 +47,9 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	// 1. PUBLIC (No auth, rate-limited)
 	mux.Handle("POST /api/mailboxes/custom", mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateEmail)))
 	mux.Handle("POST /api/mailboxes", mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateMailbox)))
-	mux.Handle("POST /api/mailboxes/{address}/message", messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessages)))
-	mux.Handle("POST /api/message/{id}", messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessage)))
-	mux.Handle("POST /api/message/{id}/attachment/{index}", messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetAttachment)))
+	mux.Handle("POST /api/mailboxes/{address}/message", sessionMiddleware.OptionalDeveloperSession(messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessages))))
+	mux.Handle("POST /api/message/{id}", sessionMiddleware.OptionalDeveloperSession(messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessage))))
+	mux.Handle("POST /api/message/{id}/attachment/{index}", sessionMiddleware.OptionalDeveloperSession(messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetAttachment))))
 
 	// Developer registration & sign in/out (Public)
 	mux.Handle("POST /api/dev/create", http.HandlerFunc(developerHandler.CreateDeveloper))

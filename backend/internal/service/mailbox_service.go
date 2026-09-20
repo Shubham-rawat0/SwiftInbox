@@ -288,6 +288,11 @@ func (s *MailboxService) DeleteDeveloperMailbox(ctx context.Context, devID uuid.
 }
 
 func (s *MailboxService) VerifyMailboxAccess(ctx context.Context, address string, devID *uuid.UUID) error {
+	// A developer may access their own developer mailboxes and any public
+	// mailbox. A public (unauthenticated) caller may only access public
+	// mailboxes. In both cases the existence of another developer's mailbox
+	// is reported as forbidden rather than leaking its presence via a
+	// distinct error.
 	var err error
 	if devID != nil {
 		_, err = s.queries.GetDeveloperMailboxId(ctx, postgres.GetDeveloperMailboxIdParams{
@@ -298,8 +303,21 @@ func (s *MailboxService) VerifyMailboxAccess(ctx context.Context, address string
 		_, err = s.queries.GetPublicMailboxId(ctx, address)
 	}
 
-	if err == nil || !errors.Is(err, sql.ErrNoRows) {
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
 		return err
+	}
+
+	if devID != nil {
+		_, err = s.queries.GetPublicMailboxId(ctx, address)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
 	}
 
 	if _, mailboxErr := s.queries.GetMailboxId(ctx, address); mailboxErr == nil {

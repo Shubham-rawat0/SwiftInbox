@@ -33,6 +33,8 @@ func WriteServiceError(w http.ResponseWriter, err error) {
 		WriteError(w, http.StatusNotFound, err)
 	case errors.Is(err, service.ErrMailboxAlreadyExists):
 		WriteError(w, http.StatusConflict, err)
+	case errors.Is(err, service.ErrForbiddenDeveloperMailbox):
+		WriteError(w, http.StatusForbidden, err)
 	case errors.Is(err, service.ErrWebhookInactive):
 		WriteError(w, http.StatusConflict, err)
 	case errors.Is(err, service.ErrWrongDomain),

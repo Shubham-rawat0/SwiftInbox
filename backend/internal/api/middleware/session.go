@@ -20,6 +20,42 @@ func NewSessionMiddleware(q *postgres.Queries) *SessionMiddleware {
 	}
 }
 
+// OptionalDeveloperSession populates the developer ID in the request context
+// when a valid developer session cookie is present, but never rejects the
+// request otherwise. It is used on endpoints that serve both the public and
+// the developer flows (e.g. message listing), so that an authenticated
+// developer can access their private mailboxes without making the public
+// mailbox API require authentication.
+func (s *SessionMiddleware) OptionalDeveloperSession(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie(utils.DeveloperCookieName)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		devID, signature, err := utils.ParseDeveloperCookie(cookie.Value)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		passwordHash, err := s.queries.GetDeveloperPasswordHash(r.Context(), devID)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if !utils.Verify([]byte(devID.String()), passwordHash, signature) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ctx := utils.WithDeveloperID(r.Context(), devID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func (s *SessionMiddleware) RequireDeveloperSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(utils.DeveloperCookieName)
