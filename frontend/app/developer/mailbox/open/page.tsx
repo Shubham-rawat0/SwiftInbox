@@ -11,8 +11,6 @@ export default function OpenMailboxPage() {
   const router = useRouter()
   const [username, setUsername] = useState("")
 
-  const emailAddress = username || `username@${MAIL_DOMAIN}`
-
   const cleanUsername = (value: string) =>
     value
       .split("@")[0]
@@ -25,7 +23,7 @@ export default function OpenMailboxPage() {
 
     if (!username.trim()) return
 
-    router.push(`/mailbox/${username.trim()}`)
+    router.push(`/developer/mailbox/${username.trim()}`)
   }
 
   return (
@@ -87,13 +85,9 @@ export default function OpenMailboxPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 flex items-center justify-between rounded-xl bg-black/[0.025] px-3.5 py-3 dark:bg-white/[0.035]">
+                <div className="mt-5 flex items-center justify-between gap-3 rounded-xl bg-black/[0.025] px-3.5 py-3 dark:bg-white/[0.035]">
                   <span className="text-[12px] text-black/40 dark:text-white/35">
                     Opening
-                  </span>
-
-                  <span className="max-w-[65%] truncate font-mono text-[12px] font-medium text-black/60 dark:text-white/55">
-                    {emailAddress}
                   </span>
                 </div>
 

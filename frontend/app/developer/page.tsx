@@ -1,9 +1,8 @@
 "use client"
 
-import { createCustomMailbox, getDeveloper } from "@/lib/api"
-import { DeveloperDetailsResponse } from "@/lib/types"
-import { useDeveloperProfile } from "@/components/layout/DeveloperProfileContext"
-import { useEffect, useState } from "react"
+import { createCustomMailbox } from "@/lib/api"
+import { DeveloperSessionGate } from "@/components/developer/DeveloperSessionGate"
+import { useState } from "react"
 import { toast } from "sonner"
 
 type ExpiryOption = "1d" | "1w" | "1m" | "custom"
@@ -11,59 +10,42 @@ type ExpiryOption = "1d" | "1w" | "1m" | "custom"
 const MAIL_DOMAIN =
   process.env.NEXT_PUBLIC_MAIL_DOMAIN || "temp.mail.at"
 
+function expiryToDate(
+  expiry: ExpiryOption,
+  customExpiry: string
+): Date | undefined {
+  if (expiry === "1d") {
+    return new Date(Date.now() + 24 * 60 * 60 * 1000)
+  }
+
+  if (expiry === "1w") {
+    return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  }
+
+  if (expiry === "1m") {
+    return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  }
+
+  if (expiry === "custom" && customExpiry) {
+    return new Date(`${customExpiry}T23:59:59.999Z`)
+  }
+
+  return undefined
+}
+
 export default function DeveloperMailboxesPage() {
-  const [developer, setDeveloper] =
-    useState<DeveloperDetailsResponse | null>(null)
+  return (
+    <DeveloperSessionGate>
+      {(developer) => <DeveloperMailboxCreator email={developer.Email} />}
+    </DeveloperSessionGate>
+  )
+}
 
-  const [isLoading, setIsLoading] = useState(true)
-
+function DeveloperMailboxCreator({ email }: { email: string }) {
   const [username, setUsername] = useState("")
   const [expiry, setExpiry] = useState<ExpiryOption>("1d")
   const [customExpiry, setCustomExpiry] = useState("")
   const [isCreating, setIsCreating] = useState(false)
-
-  const { setProfile } = useDeveloperProfile()
-
-  useEffect(() => {
-    let isActive = true
-
-    async function fetchDeveloper() {
-      try {
-        const response = await getDeveloper()
-
-        if (!isActive) return
-
-        setDeveloper(response)
-
-        setProfile({
-          name: response.Name,
-          email: response.Email,
-        })
-      } catch (error) {
-        if (!isActive) return
-
-        setDeveloper(null)
-        setProfile(null)
-
-        toast.error("Developer sign-in required", {
-          description:
-            error instanceof Error
-              ? error.message
-              : "Please sign in to access the developer dashboard.",
-        })
-      } finally {
-        if (isActive) {
-          setIsLoading(false)
-        }
-      }
-    }
-
-    void fetchDeveloper()
-
-    return () => {
-      isActive = false
-    }
-  }, [setProfile])
 
   const validateUsername = (value: string) => {
     return value
@@ -89,15 +71,11 @@ export default function DeveloperMailboxesPage() {
     setIsCreating(true)
 
     try {
-      const response = await createCustomMailbox(cleanUsername, true)
-      console.log("TODO: create developer mailbox", {
-        username: cleanUsername,
-        expiry,
-        expiresAt:
-          expiry === "custom"
-            ? customExpiry
-            : undefined,
-      })
+      const response = await createCustomMailbox(
+        cleanUsername,
+        true,
+        expiryToDate(expiry, customExpiry)
+      )
 
       toast.success(`Created mailbox ${response.address}`)
       setUsername("")
@@ -111,33 +89,6 @@ export default function DeveloperMailboxesPage() {
     } finally {
       setIsCreating(false)
     }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          Loading developer workspace
-        </div>
-      </div>
-    )
-  }
-
-  if (!developer) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center px-6">
-        <div className="text-center">
-          <p className="text-sm font-medium">
-            Sign in to access the developer workspace
-          </p>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your developer session is required to continue.
-          </p>
-        </div>
-      </div>
-    )
   }
 
   const emailAddress = `${username || "username"}@${MAIL_DOMAIN}`
@@ -294,7 +245,7 @@ export default function DeveloperMailboxesPage() {
             </span>
 
             <span className="font-mono text-black/50 dark:text-white/40">
-              {developer.Email}
+              {email}
             </span>
           </div>
         </div>

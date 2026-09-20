@@ -1,9 +1,10 @@
 "use client"
 
 import { MailboxNavigation } from "@/components/developer/MailboxNavigation"
-import { deleteDeveloperMailbox, listDeveloperMailboxes } from "@/lib/api"
+import { DeveloperSessionGate } from "@/components/developer/DeveloperSessionGate"
+import { deleteDeveloperMailbox, isApiError, listDeveloperMailboxes } from "@/lib/api"
 import { MailboxResponse } from "@/lib/types"
-import { Inbox, Trash2 } from "lucide-react"
+import { Check, Copy, Inbox, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -12,9 +13,20 @@ const MAIL_DOMAIN =
   process.env.NEXT_PUBLIC_MAIL_DOMAIN || "temp.mail.at"
 
 export default function DeveloperPage() {
+  return (
+    <DeveloperSessionGate>
+      <DeveloperMailboxList />
+    </DeveloperSessionGate>
+  )
+}
+
+function DeveloperMailboxList() {
   const [mailboxes, setMailboxes] = useState<MailboxResponse[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [signedOut, setSignedOut] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
 
   useEffect(() => {
     let isActive = true
@@ -26,12 +38,17 @@ export default function DeveloperPage() {
         if (!isActive) return
 
         setMailboxes(result)
-        setSignedOut(false)
-      } catch {
+        setFailed(false)
+      } catch (error) {
         if (!isActive) return
 
         setMailboxes([])
-        setSignedOut(true)
+
+        if (isApiError(error) && error.status === 401) {
+          setSignedOut(true)
+        } else {
+          setFailed(true)
+        }
       } finally {
         if (isActive) {
           setLoading(false)
@@ -44,7 +61,19 @@ export default function DeveloperPage() {
     return () => {
       isActive = false
     }
-  }, [])
+  }, [reloadKey])
+
+  const copyMailbox = async (address: string) => {
+    try {
+      await navigator.clipboard.writeText(address)
+
+      setCopiedAddress(address)
+      toast.success("Email copied to clipboard!")
+      setTimeout(() => setCopiedAddress(null), 1800)
+    } catch {
+      toast.error("Failed to copy email")
+    }
+  }
 
   const removeMailbox = async (address: string) => {
     try {
@@ -94,6 +123,34 @@ export default function DeveloperPage() {
     )
   }
 
+  if (failed) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-6">
+        <div className="text-center">
+          <p className="text-sm font-medium">
+            Couldn&apos;t load your mailboxes
+          </p>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            A temporary problem occurred while reaching the server.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true)
+              setFailed(false)
+              setReloadKey((value) => value + 1)
+            }}
+            className="mt-6 inline-flex h-10 items-center justify-center rounded-xl border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.07]"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-[calc(100svh-4rem)] bg-[#f8f8f6] text-[#171717] dark:bg-[#0b0c0c] dark:text-white">
       <main className="mx-auto w-full max-w-4xl px-5 py-6 sm:px-8 sm:py-8">
@@ -136,19 +193,19 @@ export default function DeveloperPage() {
                   return (
                     <div
                       key={address}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-black/[0.08] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-black/[0.14] dark:border-white/[0.08] dark:bg-[#111313] dark:hover:border-white/[0.16]"
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-black/[0.08] bg-white px-4 py-4.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-black/[0.14] dark:border-white/[0.08] dark:bg-[#111313] dark:hover:border-white/[0.16] sm:px-5 sm:py-5"
                     >
                       <Link
-                        href={`/mailbox/${username}`}
+                        href={`/developer/mailbox/${username}`}
                         className="group/address min-w-0 flex-1"
                       >
-                        <p className="truncate font-mono text-[13px] font-medium text-black/80 transition-colors group-hover/address:text-black dark:text-white/80 dark:group-hover/address:text-white">
+                        <p className="truncate font-mono text-[16px] font-medium text-black/80 transition-colors group-hover/address:text-black dark:text-white/80 dark:group-hover/address:text-white">
                           {address.includes("@")
                             ? address
                             : `${address}@${MAIL_DOMAIN}`}
                         </p>
 
-                        <p className="mt-1 truncate text-[11px] text-black/35 dark:text-white/30">
+                        <p className="mt-1.5 truncate text-[13px] text-black/35 dark:text-white/30">
                           Created{" "}
                           <span className="font-medium text-black/50 dark:text-white/45">
                             {formatDate(mailbox.createdAt)}
@@ -171,15 +228,31 @@ export default function DeveloperPage() {
                         </p>
                       </Link>
 
-                      <button
-                        type="button"
-                        aria-label={`Delete ${address}`}
-                        title="Delete mailbox"
-                        onClick={() => removeMailbox(address)}
-                        className="flex size-8 shrink-0 items-center justify-center rounded-lg text-black/30 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-white/30 dark:hover:text-red-500"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          aria-label={`Copy ${address}`}
+                          title="Copy email address"
+                          onClick={() => copyMailbox(address)}
+                          className="flex size-9 items-center justify-center rounded-lg text-black/30 transition-colors hover:bg-black/[0.05] hover:text-black/70 dark:text-white/30 dark:hover:bg-white/[0.08] dark:hover:text-white/70"
+                        >
+                          {copiedAddress === address ? (
+                            <Check className="size-4 text-emerald-600" />
+                          ) : (
+                            <Copy className="size-4" />
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          aria-label={`Delete ${address}`}
+                          title="Delete mailbox"
+                          onClick={() => removeMailbox(address)}
+                          className="flex size-9 shrink-0 items-center justify-center rounded-lg text-black/30 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-white/30 dark:hover:text-red-500"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
