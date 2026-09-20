@@ -51,49 +51,75 @@ function deduplicate<T>(key: string, request: () => Promise<T>): Promise<T> {
     return promise;
 }
 
-export async function createCustomMailbox(username: string): Promise<{ address: string; createdAt: string; expiresAt: string | null }> {
-    const cacheKey = `mailbox-${username}`;
+export async function createCustomMailbox(username: string, auth: boolean,): Promise<{address: string;createdAt: string; expiresAt: string | null;}> {
+    const cacheKey = `mailbox - ${ username } `;
 
-    const cached = getCachedData<{ address: string; createdAt: string; expiresAt: string | null }>(cacheKey);
+    const cached = getCachedData<{
+        address: string;
+        createdAt: string;
+        expiresAt: string | null;
+    }>(cacheKey);
+
     if (cached) {
         return cached;
     }
 
     return deduplicate(cacheKey, async () => {
         try {
-            const cacheBuster = `?_=${Date.now()}`//changes url so browser won't cache
+            const cacheBuster = `? _ = ${ Date.now() } `;
 
-            const response = await fetch(`${API_BASE}/api/mailboxes/custom${cacheBuster}`, {
+            const endpoint = auth
+                ? `${API_BASE}/api/dev/mailboxes/custom${cacheBuster}`
+                : `${API_BASE}/api/mailboxes/custom${cacheBuster}`;
+
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            };
+
+            const options: RequestInit = {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify({ username }),
-                cache: 'no-store' // Ensure we don't use browser cache and make netwrok request
-            });
+                cache: 'no-store',
+            };
 
+            if (auth) {
+                options.credentials = 'include';
+            }
+
+            const response = await fetch(endpoint, options);
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
 
                 if (response.status === 429) {
                     console.log('Rate limit hit on mailbox creation');
+
                     toast.error('Rate limit exceeded', {
-                        description: errorData.error || 'Too many mailboxes created. Please try again after 1 hour.',
+                        description:
+                            errorData.error ||
+                            'Too many mailboxes created. Please try again after 1 hour.',
                     });
 
                     throw new Error('Rate limit exceeded');
                 }
 
-                throw new Error(`Failed to create custom mailbox: ${response.status} ${errorData.error || response.statusText}`);
+                throw new Error(
+                    `Failed to create custom mailbox: ${ response.status } ${
+    errorData.error || response.statusText
+} `,
+                );
             }
+
             const data = await response.json();
+
             const result = {
                 address: data.address,
                 createdAt: data.createdAt,
-                expiresAt: data.expiresAt
+                expiresAt: data.expiresAt,
             };
 
             setCachedData(cacheKey, result);
+
             return result;
         } catch (error) {
             console.error('Error creating custom mailbox:', error);

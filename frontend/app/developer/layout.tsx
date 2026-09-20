@@ -10,10 +10,10 @@ export default function DeveloperLayout({
 }) {
   return (
     <DeveloperProfileProvider>
-      <SidebarProvider>
+      <SidebarProvider className="min-h-[calc(100svh-4rem)]">
         <AppSidebar />
         <SidebarInset>
-          <main>{children}</main>
+          <main className="flex flex-1 flex-col">{children}</main>
         </SidebarInset>
       </SidebarProvider>
     </DeveloperProfileProvider>
