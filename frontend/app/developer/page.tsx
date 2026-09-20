@@ -11,7 +11,7 @@ type ExpiryOption = "1d" | "1w" | "1m" | "custom"
 const MAIL_DOMAIN =
   process.env.NEXT_PUBLIC_MAIL_DOMAIN || "temp.mail.at"
 
-export default function DeveloperPage() {
+export default function DeveloperMailboxesPage() {
   const [developer, setDeveloper] =
     useState<DeveloperDetailsResponse | null>(null)
 
@@ -89,7 +89,7 @@ export default function DeveloperPage() {
     setIsCreating(true)
 
     try {
-      const response = await createCustomMailbox(cleanUsername,true)
+      const response = await createCustomMailbox(cleanUsername, true)
       console.log("TODO: create developer mailbox", {
         username: cleanUsername,
         expiry,
@@ -100,6 +100,7 @@ export default function DeveloperPage() {
       })
 
       toast.success(`Created mailbox ${response.address}`)
+      setUsername("")
     } catch (error) {
       toast.error("Could not create mailbox", {
         description:
@@ -142,21 +143,20 @@ export default function DeveloperPage() {
   const emailAddress = `${username || "username"}@${MAIL_DOMAIN}`
 
   return (
-    <div className="flex min-h-[calc(100svh-4rem)] flex-col bg-[#f7f7f5] text-[#111] dark:bg-[#0b0c0c] dark:text-white">
-      <main className="mx-auto w-full max-w-5xl px-5 py-10 lg:px-8">
-        <div className="mx-auto max-w-2xl">
-
-            <h1 className="font-heading text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
-              Create a mailbox.
+    <div className="min-h-[calc(100svh-4rem)] bg-[#f8f8f6] text-[#171717] dark:bg-[#0b0c0c] dark:text-white">
+      <main className="mx-auto w-full max-w-4xl px-5 py-6 sm:px-8 sm:py-8">
+        <div className="animate-in fade-in duration-300 ease-out">
+          <div className="mb-6">
+            <h1 className="font-heading text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">
+              Create a mailbox
             </h1>
 
-            <p className="mt-3 max-w-lg text-[15px] leading-6 text-black/50 dark:text-white/40">
-              Configure a temporary mailbox for your development
-              workflow.
+            <p className="mt-1.5 text-[14px] leading-5 text-black/45 dark:text-white/40">
+              Configure a temporary mailbox for your development workflow.
             </p>
+          </div>
 
-          {/* Mailbox creation */}
-          <section className="overflow-hidden rounded-2xl border border-black/[0.09] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
+          <section className="mt-6 overflow-hidden rounded-2xl border border-black/[0.09] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
 
             {/* Section header */}
             <div className="border-b border-black/[0.07] px-5 py-4 dark:border-white/[0.07]">

@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronsUpDown, Home, LogOut, UserRound } from "lucide-react"
+import { ChevronsUpDown, Home, Inbox, LogOut, Mail, UserRound } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { useDeveloperProfile } from "./DeveloperProfileContext"
@@ -14,7 +14,6 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import Mailbox from "@/app/developer/mailbox/page"
 
 export function AppSidebar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -90,19 +89,31 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarMenu className="gap-0.5 px-2 pt-1">
+        <SidebarMenu className="gap-0.5 px-2 pt-1 gap-y-4">
           <SidebarMenuItem>
             <SidebarMenuButton
               render={<Link href="/developer" />}
-              isActive
               tooltip="Overview"
               className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-active:bg-sidebar-accent data-active:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
             >
-              <Home/>
+              <Home />
               <span>Home</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
+
+            <SidebarMenuItem>
+            <SidebarMenuButton
+              render={<Link href="/developer/mailbox/mailboxes" />}
+              tooltip="Overview"
+              className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-active:bg-sidebar-accent data-active:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
+            >
+              <Inbox />
+              <span>Mailbox</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
+
+
       </SidebarContent>
 
       <SidebarFooter className="relative z-30 shrink-0 bg-sidebar p-2">

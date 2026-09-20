@@ -1,6 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
-import type { CreateDeveloperRequest, DeveloperDetailsResponse, DeveloperSignInRequest, DeveloperSignInResponse, Message, MessageDetail } from './types';
+import type { CreateDeveloperRequest, DeveloperDetailsResponse, DeveloperSignInRequest, DeveloperSignInResponse, MailboxDeleteResponse, MailboxResponse, Message, MessageDetail } from './types';
 import { toast } from 'sonner';
 
 const requestCache = new Map<string, { data: any; timestamp: number; promise?: Promise<any> }>();
@@ -285,6 +285,57 @@ export async function getDeveloper(): Promise<DeveloperDetailsResponse> {
     if (!response.ok) {
         throw await getApiError(response, 'Unable to get developer details');
     }
+
+    return response.json();
+}
+
+export async function listDeveloperMailboxes(forceRefresh = false): Promise<MailboxResponse[]> {
+    const cacheKey = 'dev-mailboxes';
+
+    if (!forceRefresh) {
+        const cached = getCachedData<MailboxResponse[]>(cacheKey);
+        if (cached) {
+            return cached;
+        }
+    }
+
+    return deduplicate(cacheKey, async () => {
+        try {
+            const cacheBuster = forceRefresh ? `?_=${Date.now()}` : '';
+            const response = await fetch(`${API_BASE}/api/dev/mailboxes${cacheBuster}`, {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-store',
+            });
+
+            if (!response.ok) {
+                throw await getApiError(response, 'Unable to list mailboxes');
+            }
+
+            const result = await response.json();
+            setCachedData(cacheKey, result);
+            return result;
+        } catch (error) {
+            console.error('Error listing developer mailboxes:', error);
+            throw error;
+        }
+    });
+}
+
+export async function deleteDeveloperMailbox(identifier: string): Promise<MailboxDeleteResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/mailboxes/${encodeURIComponent(identifier)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        cache: 'no-store',
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to delete mailbox');
+    }
+
+    clearCacheForAddress(identifier);
+    requestCache.delete('dev-mailboxes');
+    pendingRequests.delete('dev-mailboxes');
 
     return response.json();
 }
