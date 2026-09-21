@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronsUpDown, Home, Inbox, LogOut, Mail, UserRound } from "lucide-react"
+import { BookOpen, ChevronsUpDown, Home, Inbox,  KeyRound, LogOut,  UserRound, Webhook } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { useDeveloperProfile } from "./DeveloperProfileContext"
@@ -92,6 +92,7 @@ export function AppSidebar() {
 
      <SidebarContent>
   <SidebarMenu className="gap-0.5 px-2 pt-1 gap-y-4">
+
     <SidebarMenuItem>
       <SidebarMenuButton
         render={<Link href="/developer" />}
@@ -115,6 +116,43 @@ export function AppSidebar() {
         <span>Mailbox</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
+    
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        render={<Link href="/developer/api" />}
+        isActive={pathname.startsWith("/developer/api")}
+        tooltip="Mailbox"
+        className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-[active=true]:bg-sidebar-accent data-[active=true]:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
+      >
+        <KeyRound />
+        <span>Api keys</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+    
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        render={<Link href="/developer/webhook" />}
+        isActive={pathname.startsWith("/developer/webhook")}
+        tooltip="Mailbox"
+        className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-[active=true]:bg-sidebar-accent data-[active=true]:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
+      >
+        <Webhook />
+        <span>Webhooks</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+    
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        render={<Link href="/developer/docs" />}
+        isActive={pathname.startsWith("/developer/docs")}
+        tooltip="Mailbox"
+        className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-[active=true]:bg-sidebar-accent data-[active=true]:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
+      >
+        <BookOpen />
+        <span>Docs</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+
   </SidebarMenu>
 </SidebarContent>
       <SidebarFooter className="relative z-30 shrink-0 bg-sidebar p-2">
