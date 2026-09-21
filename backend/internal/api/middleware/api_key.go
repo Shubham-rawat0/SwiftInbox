@@ -147,6 +147,11 @@ func (a *ApiKeyMiddleware) recordUsage(ctx context.Context) error {
 		ApiRequests: int32(cost),
 		Category:    utils.UsageCategory(operation),
 	})
+	if err != nil {
+		return err
+	}
+
+	_, err = a.queries.UpdateApiKeyLastUsed(ctx, apiKeyID)
 	return err
 }
 
