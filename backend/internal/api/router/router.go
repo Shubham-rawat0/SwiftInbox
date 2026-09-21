@@ -49,7 +49,7 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("POST /api/mailboxes", mailboxLimiter.Middleware(http.HandlerFunc(mailboxHandler.CreateMailbox)))
 	mux.Handle("POST /api/mailboxes/{address}/message", sessionMiddleware.OptionalDeveloperSession(messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessages))))
 	mux.Handle("POST /api/message/{id}", sessionMiddleware.OptionalDeveloperSession(messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetMessage))))
-	mux.Handle("POST /api/message/{id}/attachment/{index}", sessionMiddleware.OptionalDeveloperSession(messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetAttachment))))
+	mux.Handle("GET /api/message/{id}/attachment/{index}", sessionMiddleware.OptionalDeveloperSession(messageAccessLimiter.Middleware(http.HandlerFunc(messageHandler.GetAttachment))))
 
 	// Developer registration & sign in/out (Public)
 	mux.Handle("POST /api/dev/create", http.HandlerFunc(developerHandler.CreateDeveloper))

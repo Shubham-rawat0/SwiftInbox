@@ -112,7 +112,15 @@ func (m *MessageHandler) GetAttachment(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
 
-	if att.Filename != "" && att.ContentID == "" {
+	if att.Inline {
+		// Inline parts render directly in the browser (e.g. embedded images).
+		// They can still be saved via the frontend's download control.
+		if att.Filename != "" {
+			w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, att.Filename))
+		} else {
+			w.Header().Set("Content-Disposition", "inline")
+		}
+	} else if att.Filename != "" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, att.Filename))
 	}
 
