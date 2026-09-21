@@ -189,3 +189,22 @@ func (q *Queries) RevokeDeveloperApiKey(ctx context.Context, arg RevokeDeveloper
 	err := row.Scan(&i.ID, &i.LastUsedAt, &i.RevokedAt)
 	return i, err
 }
+
+const updateApiKeyLastUsed = `-- name: UpdateApiKeyLastUsed :one
+UPDATE apikeys
+SET last_used_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING id, last_used_at
+`
+
+type UpdateApiKeyLastUsedRow struct {
+	ID         uuid.UUID
+	LastUsedAt sql.NullTime
+}
+
+func (q *Queries) UpdateApiKeyLastUsed(ctx context.Context, id uuid.UUID) (UpdateApiKeyLastUsedRow, error) {
+	row := q.db.QueryRowContext(ctx, updateApiKeyLastUsed, id)
+	var i UpdateApiKeyLastUsedRow
+	err := row.Scan(&i.ID, &i.LastUsedAt)
+	return i, err
+}
