@@ -18,7 +18,7 @@ export default function OpenMailboxPage() {
       .replace(/[^a-z0-9]/g, "")
       .slice(0, 32)
 
-  const openMailbox = (event: React.FormEvent) => {
+  const openMailbox = (event: React.SyntheticEvent) => {
     event.preventDefault()
 
     if (!username.trim()) return
@@ -83,12 +83,6 @@ export default function OpenMailboxPage() {
                   <div className="flex items-center border-l border-black/[0.07] px-3 text-[13px] text-black/35 dark:border-white/[0.07] dark:text-white/30">
                     @{MAIL_DOMAIN}
                   </div>
-                </div>
-
-                <div className="mt-5 flex items-center justify-between gap-3 rounded-xl bg-black/[0.025] px-3.5 py-3 dark:bg-white/[0.035]">
-                  <span className="text-[12px] text-black/40 dark:text-white/35">
-                    Opening
-                  </span>
                 </div>
 
                 <button
