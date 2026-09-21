@@ -102,7 +102,6 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("GET /api/v1/messages/{id}", utils.WithUsage("message.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(messageHandler.GetMessage))))
 	mux.Handle("POST /api/v1/message/{id}", utils.WithUsage("message.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(messageHandler.GetMessage))))
 	mux.Handle("GET /api/v1/messages/{id}/attachment/{index}", utils.WithUsage("attachment.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(messageHandler.GetAttachment))))
-	mux.Handle("POST /api/v1/message/{id}/attachment/{index}", utils.WithUsage("attachment.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(messageHandler.GetAttachment))))
 
 	// Webhooks
 	mux.Handle("GET /api/v1/webhooks", utils.WithUsage("webhook.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.ListWebhooks))))

@@ -1,6 +1,7 @@
-From: test@gmail.com
-To: alice@temp.mail.at
+From: lodVHkj@gmail.com
+To: jhattunagat@temp.mail.at
 Subject: Shaks Attachment Test
+Date: Mon, 21 Sep 2026 07:30:00 +0530
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="MIXED_BOUNDARY_123"
 
@@ -18,6 +19,9 @@ This email contains two attachments.
 Attachment 0: test.txt
 Attachment 1: test.pdf
 
+The PDF contains visible text:
+"Shaks Attachment Test"
+
 Regards,
 Shaks
 
@@ -28,8 +32,21 @@ Content-Transfer-Encoding: 8bit
 <html>
 <body>
 <h1>Hello Makkara 👋</h1>
+
 <p>This email contains <strong>two attachments</strong>.</p>
-<p>Testing the Shaks attachment parser.</p>
+
+<ul>
+  <li>Attachment 0: <strong>test.txt</strong></li>
+  <li>Attachment 1: <strong>test.pdf</strong></li>
+</ul>
+
+<p>The PDF contains visible text:</p>
+
+<blockquote>
+  Shaks Attachment Test
+</blockquote>
+
+<p>Regards,<br>Shaks</p>
 </body>
 </html>
 
@@ -41,14 +58,37 @@ Content-Disposition: attachment; filename="test.txt"
 Content-Transfer-Encoding: base64
 
 SGVsbG8gTWFra2FyYSEKClRoaXMgaXMgYSB0ZXN0IHR4dCBhdHRhY2htZW50Lg==
+
 --MIXED_BOUNDARY_123
-Content-Type: application/pdf
+Content-Type: application/pdf; name="test.pdf"
 Content-Disposition: attachment; filename="test.pdf"
 Content-Transfer-Encoding: base64
 
-JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIK
-Pj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50
-IDEKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFC
-b3ggWzAgMCA2MTIgNzkyXQo+PgplbmRvYmoKdHJhaWxlcgo8PAovUm9vdCAxIDAgUgovU2l6
-ZSA0Cj4+CnN0YXJ0eHJlZgozMjQKJSVFT0YK
+JVBERi0xLjMKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgKG9wZW5zb3Vy
+Y2UpCjEgMCBvYmoKPDwKL0YxIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9CYXNlRm9udCAv
+SGVsdmV0aWNhIC9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nIC9OYW1lIC9GMSAvU3VidHlwZSAv
+VHlwZTEgL1R5cGUgL0ZvbnQKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL0NvbnRlbnRzIDcgMCBSIC9N
+ZWRpYUJveCBbIDAgMCA2MTIgNzkyIF0gL1BhcmVudCA2IDAgUiAvUmVzb3VyY2VzIDw8Ci9Gb250
+IDEgMCBSIC9Qcm9jU2V0IFsgL1BERiAvVGV4dCAvSW1hZ2VCIC9JbWFnZUMgL0ltYWdlSSBdCj4+
+IC9Sb3RhdGUgMCAvVHJhbnMgPDwKCj4+IAogIC9UeXBlIC9QYWdlCj4+CmVuZG9iago0IDAgb2Jq
+Cjw8Ci9QYWdlTW9kZSAvVXNlTm9uZSAvUGFnZXMgNiAwIFIgL1R5cGUgL0NhdGFsb2cKPj4KZW5k
+b2JqCjUgMCBvYmoKPDwKL0F1dGhvciAoYW5vbnltb3VzKSAvQ3JlYXRpb25EYXRlIChEOjIwMjYw
+OTIxMDIxMzEzKzAwJzAwJykgL0NyZWF0b3IgKGFub255bW91cykgL0tleXdvcmRzICgpIC9Nb2RE
+YXRlIChEOjIwMjYwOTIxMDIxMzEzKzAwJzAwJykgL1Byb2R1Y2VyIChSZXBvcnRMYWIgUERGIExp
+YnJhcnkgLSBcKG9wZW5zb3VyY2VcKSkgCiAgL1N1YmplY3QgKHVuc3BlY2lmaWVkKSAvVGl0bGUg
+KHVudGl0bGVkKSAvVHJhcHBlZCAvRmFsc2UKPj4KZW5kb2JqCjYgMCBvYmoKPDwKL0NvdW50IDEg
+L0tpZHMgWyAzIDAgUiBdIC9UeXBlIC9QYWdlcwo+PgplbmRvYmoKNyAwIG9iago8PAovRmlsdGVy
+IFsgL0FTQ0lJODVEZWNvZGUgL0ZsYXRlRGVjb2RlIF0gL0xlbmd0aCAyMTkKPj4Kc3RyZWFtCkdh
+cldyXyRZY1omLWgoKTpbb01XX0hbXFRAbzVTPitfWTFpZCdZYDpLbSNoMHFfZyNfTSMhSVZKLCFV
+WSFdUWsyUjBJaGY8QFQrWDpdVjEoJmE0bE1IL0YpTG1SLHNSQGtVIzYnIlMyZ05TLWE/QVsmUy4x
+U25ZbTYuNENHa1FZM2FbNklfPj4uYl8wO1BoM1RUOyNmdG1TVENpW1U8NSM2PkEsZ3MtSz81YWhT
+bCg0UEwpckRJQjhuRm0/OEZIMkxUXFBMakFlN0ckQkgxSCIuKSEnRlJeUkt+PmVuZHN0cmVhbQpl
+bmRvYmoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDYxIDAwMDAwIG4gCjAw
+MDAwMDAwOTIgMDAwMDAgbiAKMDAwMDAwMDE5OSAwMDAwMCBuIAowMDAwMDAwMzkyIDAwMDAwIG4g
+CjAwMDAwMDA0NjAgMDAwMDAgbiAKMDAwMDAwMDcyMSAwMDAwMCBuIAowMDAwMDAwNzgwIDAwMDAw
+IG4gCnRyYWlsZXIKPDwKL0lEIApbPGZlYTYzNzczMTAwMjU3YzFmNDBhYjJkNWMxMGIwY2RhPjxm
+ZWE2Mzc3MzEwMDI1N2MxZjQwYWIyZDVjMTBiMGNkYT5dCiUgUmVwb3J0TGFiIGdlbmVyYXRlZCBQ
+REYgZG9jdW1lbnQgLS0gZGlnZXN0IChvcGVuc291cmNlKQoKL0luZm8gNSAwIFIKL1Jvb3QgNCAw
+IFIKL1NpemUgOAo+PgpzdGFydHhyZWYKMTA4OQolJUVPRgo=
+
 --MIXED_BOUNDARY_123--

@@ -1,5 +1,6 @@
 .env
 bin
 curlendpoints.txt
-email.eml
+
 /webhook
+email.eml
