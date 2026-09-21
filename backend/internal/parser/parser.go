@@ -16,6 +16,7 @@ import (
 		ContentID   string
 		Size        int
 		Index       int
+		Inline      bool
 		Data        []byte
 }
 
@@ -26,7 +27,7 @@ func ParseTextBody(raw []byte) (string, error) {
 	}
 
 	var plain, html string
-	if err := walk(entity, func(contentType string, params map[string]string, data []byte) error {
+	if err := walk(entity, func(contentType string, params map[string]string, header *message.Header, data []byte) error {
 		switch contentType {
 		case "text/plain":
 			if plain == "" {
@@ -58,7 +59,7 @@ func ParseHTMLBody(raw []byte) (string, error) {
 	}
 
 	var html string
-	if err := walk(entity, func(contentType string, params map[string]string, data []byte) error {
+	if err := walk(entity, func(contentType string, params map[string]string, header *message.Header, data []byte) error {
 		if contentType == "text/html" && html == "" {
 			html = string(data)
 		}
@@ -77,19 +78,37 @@ func ParseAttachments(raw []byte) ([]Attachment, error) {
 	}
 
 	var attachments []Attachment
-	if err := walk(entity, func(contentType string, params map[string]string, data []byte) error {
-		// Don't treat the normal email body as an attachment.
-		if contentType == "text/plain" || contentType == "text/html" {
+	if err := walk(entity, func(contentType string, params map[string]string, header *message.Header, data []byte) error {
+		isBody := contentType == "text/plain" || contentType == "text/html"
+
+		disp, dispParams, _ := header.ContentDisposition()
+		filename := params["name"]
+		if filename == "" {
+			filename = dispParams["filename"]
+		}
+
+		contentID := strings.Trim(header.Get("Content-Id"), "<> ")
+		if contentID == "" {
+			contentID = strings.Trim(params["content-id"], "<> ")
+		}
+
+		// Only skip parts that are the email body itself (no explicit
+		// filename, name param, content-id or attachment disposition).
+		// Named text/plain (or text/html) parts ARE attachments.
+		if isBody && filename == "" && contentID == "" && !strings.EqualFold(disp, "attachment") {
 			return nil
 		}
 
-		filename := params["name"]
-		contentID := strings.Trim(params["content-id"], "<>")
+		inline := strings.EqualFold(disp, "inline")
+		if !inline && contentID != "" && !strings.EqualFold(disp, "attachment") {
+			inline = true
+		}
 
 		attachments = append(attachments, Attachment{
 			Filename:    filename,
 			ContentType: contentType,
 			ContentID:   contentID,
+			Inline:      inline,
 			Size:        len(data),
 			Index:       len(attachments),
 			Data:        data,
@@ -124,7 +143,7 @@ func normalizeFinalBoundary(raw []byte) []byte {
 	return normalized
 }
 
-func walk(entity *message.Entity, fn func(contentType string, params map[string]string, data []byte) error) error {
+func walk(entity *message.Entity, fn func(contentType string, params map[string]string, header *message.Header, data []byte) error) error {
 	contentType, params, err := entity.Header.ContentType()
 	if err != nil {
 		return fmt.Errorf("parse content type: %w", err)
@@ -156,7 +175,7 @@ func walk(entity *message.Entity, fn func(contentType string, params map[string]
 		return fmt.Errorf("read MIME body: %w", err)
 	}
 
-	return fn(contentType, params, data)
+	return fn(contentType, params, &entity.Header, data)
 }
 
 
