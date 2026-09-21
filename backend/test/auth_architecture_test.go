@@ -75,6 +75,37 @@ func TestDeveloperDashboardRequiresSession(t *testing.T) {
 	}
 }
 
+func TestPublicAttachmentEndpointDoesNotRequireAuth(t *testing.T) {
+	r := router.NewServerMux(nil)
+
+	// Public use of the shared message endpoint must NOT require a developer
+	// session. An invalid message id reaches 400 Bad Request before any DB
+	// access — if auth were required we would see 401 instead.
+	req := httptest.NewRequest(http.MethodGet, "/api/message/not-a-valid-id/attachment/0", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for unauthenticated public attachment request, got %d. Body: %s", w.Code, w.Body.String())
+	}
+
+	// A malformed developer cookie must also be ignored (optional session),
+	// never turned into 401.
+	req2 := httptest.NewRequest(http.MethodGet, "/api/message/not-a-valid-id/attachment/0", nil)
+	req2.AddCookie(&http.Cookie{
+		Name:  utils.DeveloperCookieName,
+		Value: "malformed-cookie-value",
+	})
+	w2 := httptest.NewRecorder()
+
+	r.ServeHTTP(w2, req2)
+
+	if w2.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request with malformed developer cookie (optional session), got %d. Body: %s", w2.Code, w2.Body.String())
+	}
+}
+
 func TestExternalV1APIRequiresAPIKey(t *testing.T) {
 	r := router.NewServerMux(nil)
 
