@@ -18,6 +18,7 @@ export interface MessageAttachment {
     size: number;
     contentId: string;
     index: number;
+    inline: boolean;
 }
 
 export interface ParsedMessageData {
@@ -26,6 +27,13 @@ export interface ParsedMessageData {
     text: string;
     html: string;
     attachments: MessageAttachment[];
+}
+
+export interface AttachmentResult {
+    blob: Blob;
+    contentType: string;
+    filename: string | null;
+    size: number;
 }
 
 export interface MessageDetail {

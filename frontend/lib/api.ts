@@ -1,6 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
-import type { CreateDeveloperRequest, DeveloperDetailsResponse, DeveloperSignInRequest, DeveloperSignInResponse, MailboxDeleteResponse, MailboxResponse, Message, MessageDetail } from './types';
+import type { AttachmentResult, CreateDeveloperRequest, DeveloperDetailsResponse, DeveloperSignInRequest, DeveloperSignInResponse, MailboxDeleteResponse, MailboxResponse, Message, MessageDetail } from './types';
 import { toast } from 'sonner';
 
 /** Error thrown by the API layer that carries the HTTP status when available. */
@@ -253,6 +253,47 @@ export async function fetchMessage(messageId: string, auth = false): Promise<Mes
             throw error;
         }
     });
+}
+
+export async function fetchAttachment(messageId: string, index: number, auth = false): Promise<AttachmentResult> {
+    const fetchOptions: RequestInit = {
+        method: 'GET',
+        cache: 'no-store',
+    };
+
+    if (auth) {
+        fetchOptions.credentials = 'include';
+    }
+
+    const response = await fetch(`${API_BASE}/api/message/${messageId}/attachment/${index}`, fetchOptions);
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        if (response.status === 429) {
+            console.log('Rate limit hit on attachment fetch');
+            toast.error('Rate limit exceeded', {
+                description: errorData.error || 'Too many requests. Please wait a moment.',
+            });
+
+            throw new ApiError('Rate limit exceeded', 429);
+        }
+
+        throw new ApiError(errorData.error || `Failed to fetch attachment: ${response.status} ${response.statusText}`, response.status);
+    }
+
+    const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+    const disposition = response.headers.get('Content-Disposition');
+    const filename = disposition?.match(/filename="?([^";]+)"?/i)?.[1] ?? null;
+
+    const blob = await response.blob();
+    const byteLength = blob.size;
+    return {
+        blob,
+        contentType,
+        filename,
+        size: Number(response.headers.get('Content-Length')) || byteLength,
+    };
 }
 
 async function getApiError(response: Response, fallback: string): Promise<ApiError> {
