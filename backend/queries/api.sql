@@ -12,6 +12,12 @@ RETURNING id, developer_id, name, key_hash;
 -- name: GetApiKey :one
 SELECT id, developer_id, name, last_used_at, revoked_at from apikeys where key_hash =$1;
 
+-- name: UpdateApiKeyLastUsed :one
+UPDATE apikeys
+SET last_used_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING id, last_used_at;
+
 -- name: RevokeApiKey :one
 UPDATE apikeys
 SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP)
