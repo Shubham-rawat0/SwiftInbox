@@ -104,6 +104,11 @@ export interface RevokeApiKeyResponse {
     RevokedAt: NullableTime;
 }
 
+export interface RevokeDeveloperApiKeyResponse {
+    message: string;
+    id: string;
+}
+
 export interface ApiKeyUsageResponse {
     ID: string;
     Name: string;

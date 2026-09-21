@@ -1,6 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
-import type { AttachmentResult, CreateDeveloperRequest, DeveloperDetailsResponse, DeveloperSignInRequest, DeveloperSignInResponse, MailboxDeleteResponse, MailboxResponse, Message, MessageDetail } from './types';
+import type { ApiKeyUsageResponse, AttachmentResult, CreateApiKeyResponse, CreateDeveloperRequest, DeveloperDetailsResponse, DeveloperSignInRequest, DeveloperSignInResponse, MailboxDeleteResponse, MailboxResponse, Message, MessageDetail, RevokeDeveloperApiKeyResponse } from './types';
 import { toast } from 'sonner';
 
 /** Error thrown by the API layer that carries the HTTP status when available. */
@@ -403,6 +403,72 @@ export async function deleteDeveloperMailbox(identifier: string): Promise<Mailbo
     clearCacheForAddress(identifier);
     requestCache.delete('dev-mailboxes');
     pendingRequests.delete('dev-mailboxes');
+
+    return response.json();
+}
+
+export async function listDeveloperApiKeys(forceRefresh = false): Promise<ApiKeyUsageResponse[]> {
+    const cacheKey = 'dev-api-keys';
+
+    if (!forceRefresh) {
+        const cached = getCachedData<ApiKeyUsageResponse[]>(cacheKey);
+        if (cached) {
+            return cached;
+        }
+    }
+
+    return deduplicate(cacheKey, async () => {
+        try {
+            const cacheBuster = forceRefresh ? `?_=${Date.now()}` : '';
+            const response = await fetch(`${API_BASE}/api/dev/keys${cacheBuster}`, {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-store',
+            });
+
+            if (!response.ok) {
+                throw await getApiError(response, 'Unable to list API keys');
+            }
+
+            const result = await response.json();
+            setCachedData(cacheKey, result);
+            return result;
+        } catch (error) {
+            console.error('Error listing developer API keys:', error);
+            throw error;
+        }
+    });
+}
+
+export async function createDeveloperApiKey(name: string): Promise<CreateApiKeyResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/keys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
+        body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to create API key');
+    }
+
+    return response.json();
+}
+
+export async function revokeDeveloperApiKey(id: string): Promise<RevokeDeveloperApiKeyResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/keys/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        cache: 'no-store',
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to revoke API key');
+    }
+
+    requestCache.delete('dev-api-keys');
+    pendingRequests.delete('dev-api-keys');
 
     return response.json();
 }
