@@ -2,23 +2,20 @@
 
 import { useParams } from "next/navigation"
 import { DeveloperSessionGate } from "@/components/developer/DeveloperSessionGate"
-import MessageDetailView, { MessageDetailFetch } from "@/components/mailbox/MessageDetailView"
-import type { AttachmentFetch } from "@/components/mailbox/AttachmentView"
-import { fetchAttachment, fetchMessage } from "@/lib/api"
+import AttachmentView, { AttachmentFetch } from "@/components/mailbox/AttachmentView"
+import { fetchAttachment } from "@/lib/api"
 
 const MAIL_DOMAIN =
   process.env.NEXT_PUBLIC_MAIL_DOMAIN || "temp.mail.at"
 
-const fetchDeveloperMessage: MessageDetailFetch = (messageId) =>
-  fetchMessage(messageId, true)
-
 const fetchDeveloperAttachment: AttachmentFetch = (messageId, index) =>
   fetchAttachment(messageId, index, true)
 
-export default function DeveloperMessagePage() {
+export default function DeveloperAttachmentPage() {
   const params = useParams()
   const username = params.username as string
   const messageId = params.messageId as string
+  const index = Number(params.index)
 
   const address = username.includes("@")
     ? username
@@ -28,11 +25,11 @@ export default function DeveloperMessagePage() {
 
   return (
     <DeveloperSessionGate>
-      <MessageDetailView
+      <AttachmentView
         username={address}
         messageId={messageId}
-        backHref={`/developer/mailbox/${localUsername}`}
-        fetchMessage={fetchDeveloperMessage}
+        index={index}
+        backHref={`/developer/mailbox/${localUsername}/message/${messageId}`}
         fetchAttachment={fetchDeveloperAttachment}
       />
     </DeveloperSessionGate>
