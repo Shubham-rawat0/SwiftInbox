@@ -62,6 +62,7 @@ type AttachmentInfo struct {
 	Size        int    `json:"size"`
 	ContentID   string `json:"contentId"`
 	Index       int    `json:"index"`
+	Inline      bool   `json:"inline"`
 }
 
 type ParsedData struct {
@@ -86,6 +87,7 @@ type AttachmentResult struct {
 	Filename    string
 	ContentType string
 	ContentID   string
+	Inline      bool
 	Data        []byte
 }
 
@@ -390,6 +392,7 @@ func (s *MailboxService) GetMessage(ctx context.Context, messageID uuid.UUID, de
 			ContentID:   att.ContentID,
 			Size:        att.Size,
 			Index:       att.Index,
+			Inline:      att.Inline,
 		})
 	}
 
@@ -448,6 +451,7 @@ func (s *MailboxService) GetAttachment(ctx context.Context, messageID uuid.UUID,
 		Filename:    att.Filename,
 		ContentType: contentType,
 		ContentID:   att.ContentID,
+		Inline:      att.Inline,
 		Data:        att.Data,
 	}, nil
 }
