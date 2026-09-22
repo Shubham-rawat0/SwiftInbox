@@ -2,6 +2,7 @@ package cleanup
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"time"
 
@@ -10,9 +11,27 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	revokedApiKeyRetentionFallback = 7 * 24 * time.Hour
+)
+
 func CleanUpExpired(q *postgres.Queries, publisher queue.Publisher) (int32, error) {
 	ctx := context.Background()
 	now := time.Now()
+
+	retention := getDurationEnv(
+		"REVOKED_API_KEY_RETENTION_MS",
+		revokedApiKeyRetentionFallback,
+	)
+
+	deletedRevokedApiKeys, err := q.DeleteRevokedApiKeys(
+		ctx,
+		sql.NullTime{Time: now.Add(-retention), Valid: true},
+	)
+	if err != nil {
+		log.Println("Revoked API key cleanup error:", err.Error())
+		return 0, err
+	}
 
 	deletedMessages, err := q.DeleteExpiredMessages(ctx, now)
 	if err != nil {
@@ -52,11 +71,11 @@ func CleanUpExpired(q *postgres.Queries, publisher queue.Publisher) (int32, erro
 		}
 	}
 
-	count := int32(len(deletedMessages) + len(deletedMailboxIDs))
+	count := int32(len(deletedMessages) + len(deletedMailboxIDs) + len(deletedRevokedApiKeys))
 	if count == 0 {
 		log.Println("nothing to delete")
 	} else {
-		log.Printf("deleted %d messages and %d mailboxes", len(deletedMessages), len(deletedMailboxIDs))
+		log.Printf("deleted %d messages, %d mailboxes and %d revoked api keys", len(deletedMessages), len(deletedMailboxIDs), len(deletedRevokedApiKeys))
 	}
 	return count, nil
 }

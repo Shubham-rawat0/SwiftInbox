@@ -59,6 +59,40 @@ func (q *Queries) CreateApiKey(ctx context.Context, arg CreateApiKeyParams) (Cre
 	return i, err
 }
 
+const deleteRevokedApiKeys = `-- name: DeleteRevokedApiKeys :many
+WITH deleted AS (
+    DELETE FROM apikeys
+    WHERE revoked_at IS NOT NULL
+      AND revoked_at < $1
+    RETURNING id
+)
+SELECT id
+FROM deleted
+`
+
+func (q *Queries) DeleteRevokedApiKeys(ctx context.Context, revokedAt sql.NullTime) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, deleteRevokedApiKeys, revokedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getApiKey = `-- name: GetApiKey :one
 SELECT id, developer_id, name, last_used_at, revoked_at from apikeys where key_hash =$1
 `
@@ -100,6 +134,7 @@ LEFT JOIN api_key_usage b
     ON b.api_key_id = a.id
    AND b.period = DATE_TRUNC('month', CURRENT_DATE)::DATE
 WHERE a.developer_id = $1
+  AND a.revoked_at IS NULL
 `
 
 type GetUserApiKeysRow struct {
