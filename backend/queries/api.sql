@@ -46,5 +46,16 @@ FROM apikeys a
 LEFT JOIN api_key_usage b
     ON b.api_key_id = a.id
    AND b.period = DATE_TRUNC('month', CURRENT_DATE)::DATE
-WHERE a.developer_id = $1;
+WHERE a.developer_id = $1
+  AND a.revoked_at IS NULL;
+
+-- name: DeleteRevokedApiKeys :many
+WITH deleted AS (
+    DELETE FROM apikeys
+    WHERE revoked_at IS NOT NULL
+      AND revoked_at < $1
+    RETURNING id
+)
+SELECT id
+FROM deleted;
 
