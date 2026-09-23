@@ -9,10 +9,11 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/repository/postgres"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/utils"
 	"github.com/google/uuid"
 )
 
@@ -25,29 +26,35 @@ var (
 	ErrEventsRequired             = errors.New("events are required")
 	ErrMailboxIDsRequired         = errors.New("mailbox_ids are required")
 	ErrInvalidWebhookEvent        = errors.New("invalid webhook event")
+	ErrDeadLetterNotFound         = errors.New("dead letter not found")
 	ErrMailboxAlreadyLinked       = errors.New("mailbox already linked to webhook")
 )
 
 type WebhookResult struct {
 	ID          uuid.UUID   `json:"id"`
 	DeveloperID uuid.UUID   `json:"developer_id"`
+	Name        string      `json:"name"`
 	Url         string      `json:"url"`
 	IsActive    bool        `json:"is_active"`
 	Events      []string    `json:"events"`
 	Secret      string      `json:"secret,omitempty"`
-	MailboxIDs  []uuid.UUID `json:"mailbox_ids,omitempty"`
+	MailboxIDs  []uuid.UUID `json:"mailbox_ids"`
 }
 
 type DeadLetterResult struct {
-	ID        uuid.UUID     `json:"id"`
-	WebhookID uuid.UUID     `json:"webhook_id"`
-	MailboxID uuid.NullUUID `json:"mailbox_id"`
-	MessageID uuid.NullUUID `json:"message_id"`
-	Event     string        `json:"event"`
-	Url       string        `json:"url"`
-	Reason    string        `json:"reason"`
-	Attempts  int32         `json:"attempts"`
-	CreatedAt time.Time     `json:"created_at"`
+	ID              uuid.UUID     `json:"id"`
+	WebhookID       uuid.UUID     `json:"webhook_id"`
+	MailboxID       uuid.NullUUID `json:"mailbox_id"`
+	MailboxAddress  *string       `json:"mailbox_address"`
+	MessageID       uuid.NullUUID `json:"message_id"`
+	MessageSender   *string       `json:"message_sender"`
+	MessageSubject  *string       `json:"message_subject"`
+	Event           string        `json:"event"`
+	Url             string        `json:"url"`
+	Reason          string        `json:"reason"`
+	Attempts        int32         `json:"attempts"`
+	Seen            bool          `json:"seen"`
+	CreatedAt       time.Time     `json:"created_at"`
 }
 
 type WebhookService struct {
@@ -77,12 +84,17 @@ func WebhookEncryptionKey() ([]byte, error) {
 	return decodedKey, nil
 }
 
-func (s *WebhookService) CreateWebhook(ctx context.Context, devID uuid.UUID, url string, events []string, mailboxIDs []uuid.UUID) (*WebhookResult, error) {
+func (s *WebhookService) CreateWebhook(ctx context.Context, devID uuid.UUID, name string, url string, events []string, mailboxIDs []uuid.UUID) (*WebhookResult, error) {
 	if err := ValidateEvents(events); err != nil {
 		return nil, err
 	}
 	if len(mailboxIDs) == 0 {
 		return nil, ErrMailboxIDsRequired
+	}
+
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = url
 	}
 
 	secret, err := utils.GenerateSecret()
@@ -104,6 +116,7 @@ func (s *WebhookService) CreateWebhook(ctx context.Context, devID uuid.UUID, url
 	data, err := s.queries.CreateWebhook(ctx, postgres.CreateWebhookParams{
 		ID:              id,
 		DeveloperID:     devID,
+		Name:            name,
 		Url:             url,
 		SecretEncrypted: encryptSecret,
 		Events:          events,
@@ -138,6 +151,7 @@ func (s *WebhookService) CreateWebhook(ctx context.Context, devID uuid.UUID, url
 	return &WebhookResult{
 		ID:          data.ID,
 		DeveloperID: data.DeveloperID,
+		Name:        data.Name,
 		Url:         data.Url,
 		IsActive:    data.IsActive,
 		Events:      data.Events,
@@ -157,9 +171,11 @@ func (s *WebhookService) ListWebhooks(ctx context.Context, devID uuid.UUID) ([]W
 		webhooks = append(webhooks, WebhookResult{
 			ID:          w.ID,
 			DeveloperID: w.DeveloperID,
+			Name:        w.Name,
 			Url:         w.Url,
 			IsActive:    w.IsActive,
 			Events:      w.Events,
+			MailboxIDs:  w.MailboxIds,
 		})
 	}
 	return webhooks, nil
@@ -180,9 +196,11 @@ func (s *WebhookService) GetWebhook(ctx context.Context, devID uuid.UUID, webhoo
 	return &WebhookResult{
 		ID:          data.ID,
 		DeveloperID: data.DeveloperID,
+		Name:        data.Name,
 		Url:         data.Url,
 		IsActive:    data.IsActive,
 		Events:      data.Events,
+		MailboxIDs:  data.MailboxIds,
 	}, nil
 }
 
@@ -248,7 +266,7 @@ func (s *WebhookService) AddEvents(ctx context.Context, devID uuid.UUID, webhook
 	data, err := s.queries.InsertEvent(ctx, postgres.InsertEventParams{
 		ID:          webhookID,
 		DeveloperID: devID,
-		Events:      events,
+		Column3:     events,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -260,9 +278,11 @@ func (s *WebhookService) AddEvents(ctx context.Context, devID uuid.UUID, webhook
 	return &WebhookResult{
 		ID:          data.ID,
 		DeveloperID: data.DeveloperID,
+		Name:        data.Name,
 		Url:         data.Url,
 		IsActive:    data.IsActive,
 		Events:      data.Events,
+		MailboxIDs:  data.MailboxIds,
 	}, nil
 }
 
@@ -289,9 +309,36 @@ func (s *WebhookService) RemoveEvents(ctx context.Context, devID uuid.UUID, webh
 	return &WebhookResult{
 		ID:          data.ID,
 		DeveloperID: data.DeveloperID,
+		Name:        data.Name,
 		Url:         data.Url,
 		IsActive:    data.IsActive,
 		Events:      data.Events,
+		MailboxIDs:  data.MailboxIds,
+	}, nil
+}
+
+func (s *WebhookService) UpdateWebhook(ctx context.Context, devID uuid.UUID, webhookID uuid.UUID, name string, isActive bool) (*WebhookResult, error) {
+	data, err := s.queries.UpdateWebhook(ctx, postgres.UpdateWebhookParams{
+		ID:          webhookID,
+		DeveloperID: devID,
+		Column3:     name,
+		Column4:     isActive,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrWebhookNotFound
+		}
+		return nil, err
+	}
+
+	return &WebhookResult{
+		ID:          data.ID,
+		DeveloperID: data.DeveloperID,
+		Name:        data.Name,
+		Url:         data.Url,
+		IsActive:    data.IsActive,
+		Events:      data.Events,
+		MailboxIDs:  data.MailboxIds,
 	}, nil
 }
 
@@ -354,16 +401,42 @@ func (s *WebhookService) ListDeadLetters(ctx context.Context, devID uuid.UUID) (
 	results := make([]DeadLetterResult, 0, len(data))
 	for _, item := range data {
 		results = append(results, DeadLetterResult{
-			ID:        item.ID,
-			WebhookID: item.WebhookID,
-			MailboxID: item.MailboxID,
-			MessageID: item.MessageID,
-			Event:     item.Event,
-			Url:       item.Url,
-			Reason:    item.Reason,
-			Attempts:  item.Attempts,
-			CreatedAt: item.CreatedAt,
+			ID:             item.ID,
+			WebhookID:      item.WebhookID,
+			MailboxID:      item.MailboxID,
+			MailboxAddress: nullStringPtr(item.MailboxAddress),
+			MessageID:      item.MessageID,
+			MessageSender:  nullStringPtr(item.MessageSender),
+			MessageSubject: nullStringPtr(item.MessageSubject),
+			Event:          item.Event,
+			Url:            item.Url,
+			Reason:         item.Reason,
+			Attempts:       item.Attempts,
+			Seen:           item.Seen,
+			CreatedAt:      item.CreatedAt,
 		})
 	}
 	return results, nil
+}
+
+func (s *WebhookService) MarkDeadLetterSeen(ctx context.Context, devID uuid.UUID, deadLetterID uuid.UUID) (uuid.UUID, error) {
+	id, err := s.queries.MarkWebhookDeadLetterSeen(ctx, postgres.MarkWebhookDeadLetterSeenParams{
+		ID:          deadLetterID,
+		DeveloperID: devID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, ErrDeadLetterNotFound
+		}
+		return uuid.Nil, err
+	}
+
+	return id, nil
+}
+
+func nullStringPtr(value sql.NullString) *string {
+	if !value.Valid {
+		return nil
+	}
+	return &value.String
 }

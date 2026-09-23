@@ -1,4 +1,4 @@
-module github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend
+module github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend
 
 go 1.26.4
 

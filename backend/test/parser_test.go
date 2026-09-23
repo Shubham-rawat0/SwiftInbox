@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/parser"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/parser"
 )
 
 func TestParseEmailMultipartMessage(t *testing.T) {

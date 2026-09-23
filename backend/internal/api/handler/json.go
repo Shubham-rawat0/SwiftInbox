@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/service"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/service"
 )
 
 func WriteJSON(w http.ResponseWriter, code int, data any) {
@@ -29,6 +29,7 @@ func WriteServiceError(w http.ResponseWriter, err error) {
 		errors.Is(err, service.ErrWebhookNotFound),
 		errors.Is(err, service.ErrWebhookMailboxNotFound),
 		errors.Is(err, service.ErrWebhookMailboxLinkNotFound),
+		errors.Is(err, service.ErrDeadLetterNotFound),
 		errors.Is(err, service.ErrApiKeyNotFound):
 		WriteError(w, http.StatusNotFound, err)
 	case errors.Is(err, service.ErrMailboxAlreadyExists):

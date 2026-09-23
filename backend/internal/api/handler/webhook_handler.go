@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/service"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/repository/postgres"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/service"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/utils"
 	"github.com/google/uuid"
 )
 
@@ -28,9 +28,15 @@ func NewWebhookHandlerWithService(svc *service.WebhookService) *WebhookHandler {
 }
 
 type WebhookReqBody struct {
+	Name       string      `json:"name"`
 	Url        string      `json:"url"`
 	Events     []string    `json:"events"`
 	MailboxIDs []uuid.UUID `json:"mailbox_ids"`
+}
+
+type WebhookUpdateBody struct {
+	Name     *string `json:"name"`
+	IsActive *bool   `json:"is_active"`
 }
 
 type WebhookEventsBody struct {
@@ -71,7 +77,42 @@ func (a *WebhookHandler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := a.svc.CreateWebhook(r.Context(), developerID, reqBody.Url, reqBody.Events, reqBody.MailboxIDs)
+	result, err := a.svc.CreateWebhook(r.Context(), developerID, reqBody.Name, reqBody.Url, reqBody.Events, reqBody.MailboxIDs)
+	if err != nil {
+		WriteServiceError(w, err)
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, result)
+}
+
+func (a *WebhookHandler) UpdateWebhook(w http.ResponseWriter, r *http.Request) {
+	developerID, ok := a.getDeveloperID(w, r)
+	if !ok {
+		return
+	}
+	webhookID, ok := a.getWebhookID(w, r)
+	if !ok {
+		return
+	}
+
+	reqBody := WebhookUpdateBody{}
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		WriteError(w, http.StatusBadRequest, errors.New("invalid request body"))
+		return
+	}
+
+	name := ""
+	if reqBody.Name != nil {
+		name = *reqBody.Name
+	}
+
+	isActive := true
+	if reqBody.IsActive != nil {
+		isActive = *reqBody.IsActive
+	}
+
+	result, err := a.svc.UpdateWebhook(r.Context(), developerID, webhookID, name, isActive)
 	if err != nil {
 		WriteServiceError(w, err)
 		return
@@ -276,4 +317,28 @@ func (a *WebhookHandler) GetDeadLetters(w http.ResponseWriter, r *http.Request) 
 	}
 
 	WriteJSON(w, http.StatusOK, deadLetters)
+}
+
+func (a *WebhookHandler) MarkDeadLetterSeen(w http.ResponseWriter, r *http.Request) {
+	developerID, ok := a.getDeveloperID(w, r)
+	if !ok {
+		return
+	}
+
+	deadLetterID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, errors.New("invalid dead letter id"))
+		return
+	}
+
+	id, err := a.svc.MarkDeadLetterSeen(r.Context(), developerID, deadLetterID)
+	if err != nil {
+		WriteServiceError(w, err)
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"message": "dead letter marked as seen",
+		"id":      id,
+	})
 }

@@ -7,6 +7,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,12 +15,13 @@ import (
 )
 
 const createWebhook = `-- name: CreateWebhook :one
-INSERT INTO webhooks(id,developer_id,url,secret_encrypted,events) values ($1,$2,$3,$4,$5) RETURNING id,developer_id,url,is_active,events
+INSERT INTO webhooks(id,developer_id,name,url,secret_encrypted,events) values ($1,$2,$3,$4,$5,$6) RETURNING id,developer_id,name,url,is_active,events
 `
 
 type CreateWebhookParams struct {
 	ID              uuid.UUID
 	DeveloperID     uuid.UUID
+	Name            string
 	Url             string
 	SecretEncrypted string
 	Events          []string
@@ -28,6 +30,7 @@ type CreateWebhookParams struct {
 type CreateWebhookRow struct {
 	ID          uuid.UUID
 	DeveloperID uuid.UUID
+	Name        string
 	Url         string
 	IsActive    bool
 	Events      []string
@@ -37,6 +40,7 @@ func (q *Queries) CreateWebhook(ctx context.Context, arg CreateWebhookParams) (C
 	row := q.db.QueryRowContext(ctx, createWebhook,
 		arg.ID,
 		arg.DeveloperID,
+		arg.Name,
 		arg.Url,
 		arg.SecretEncrypted,
 		pq.Array(arg.Events),
@@ -45,6 +49,7 @@ func (q *Queries) CreateWebhook(ctx context.Context, arg CreateWebhookParams) (C
 	err := row.Scan(
 		&i.ID,
 		&i.DeveloperID,
+		&i.Name,
 		&i.Url,
 		&i.IsActive,
 		pq.Array(&i.Events),
@@ -88,15 +93,19 @@ func (q *Queries) CreateWebhookDeadLetter(ctx context.Context, arg CreateWebhook
 }
 
 const deleteEvents = `-- name: DeleteEvents :one
-UPDATE webhooks
+UPDATE webhooks w
 SET events = ARRAY(
   SELECT unnest(events)
   EXCEPT
   SELECT unnest($3::text[])
 )
-WHERE id = $1
-  AND developer_id = $2
-RETURNING id, developer_id, url, is_active, events
+WHERE w.id = $1
+  AND w.developer_id = $2
+RETURNING w.id, w.developer_id, w.name, w.url, w.is_active, w.events,
+    COALESCE(
+        ARRAY(SELECT wm.mailbox_id::uuid FROM webhook_mailboxes wm WHERE wm.webhook_id = w.id ORDER BY wm.mailbox_id::uuid),
+        '{}'::uuid[]
+    )::uuid[] AS mailbox_ids
 `
 
 type DeleteEventsParams struct {
@@ -108,9 +117,11 @@ type DeleteEventsParams struct {
 type DeleteEventsRow struct {
 	ID          uuid.UUID
 	DeveloperID uuid.UUID
+	Name        string
 	Url         string
 	IsActive    bool
 	Events      []string
+	MailboxIds  []uuid.UUID
 }
 
 func (q *Queries) DeleteEvents(ctx context.Context, arg DeleteEventsParams) (DeleteEventsRow, error) {
@@ -119,9 +130,11 @@ func (q *Queries) DeleteEvents(ctx context.Context, arg DeleteEventsParams) (Del
 	err := row.Scan(
 		&i.ID,
 		&i.DeveloperID,
+		&i.Name,
 		&i.Url,
 		&i.IsActive,
 		pq.Array(&i.Events),
+		pq.Array(&i.MailboxIds),
 	)
 	return i, err
 }
@@ -145,9 +158,13 @@ func (q *Queries) DeleteWebhook(ctx context.Context, arg DeleteWebhookParams) (u
 }
 
 const getWebhook = `-- name: GetWebhook :one
-SELECT id, developer_id, url, secret_encrypted, is_active, events
-FROM webhooks
-WHERE id = $1 AND developer_id = $2
+SELECT w.id, w.developer_id, w.name, w.url, w.secret_encrypted, w.is_active, w.events,
+    COALESCE(
+        ARRAY(SELECT wm.mailbox_id::uuid FROM webhook_mailboxes wm WHERE wm.webhook_id = w.id ORDER BY wm.mailbox_id::uuid),
+        '{}'::uuid[]
+    )::uuid[] AS mailbox_ids
+FROM webhooks w
+WHERE w.id = $1 AND w.developer_id = $2
 `
 
 type GetWebhookParams struct {
@@ -158,10 +175,12 @@ type GetWebhookParams struct {
 type GetWebhookRow struct {
 	ID              uuid.UUID
 	DeveloperID     uuid.UUID
+	Name            string
 	Url             string
 	SecretEncrypted string
 	IsActive        bool
 	Events          []string
+	MailboxIds      []uuid.UUID
 }
 
 func (q *Queries) GetWebhook(ctx context.Context, arg GetWebhookParams) (GetWebhookRow, error) {
@@ -170,10 +189,12 @@ func (q *Queries) GetWebhook(ctx context.Context, arg GetWebhookParams) (GetWebh
 	err := row.Scan(
 		&i.ID,
 		&i.DeveloperID,
+		&i.Name,
 		&i.Url,
 		&i.SecretEncrypted,
 		&i.IsActive,
 		pq.Array(&i.Events),
+		pq.Array(&i.MailboxIds),
 	)
 	return i, err
 }
@@ -251,38 +272,46 @@ func (q *Queries) GetWebhooksByMailboxID(ctx context.Context, mailboxID uuid.UUI
 }
 
 const insertEvent = `-- name: InsertEvent :one
-UPDATE webhooks
+UPDATE webhooks w
 SET events = ARRAY(
-    SELECT DISTINCT unnest(events || $3)
+    SELECT DISTINCT unnest(events || $3::text[])
 )
-WHERE id = $1
-  AND developer_id = $2
-RETURNING id, developer_id, url, is_active, events
+WHERE w.id = $1
+  AND w.developer_id = $2
+RETURNING w.id, w.developer_id, w.name, w.url, w.is_active, w.events,
+    COALESCE(
+        ARRAY(SELECT wm.mailbox_id::uuid FROM webhook_mailboxes wm WHERE wm.webhook_id = w.id ORDER BY wm.mailbox_id::uuid),
+        '{}'::uuid[]
+    )::uuid[] AS mailbox_ids
 `
 
 type InsertEventParams struct {
 	ID          uuid.UUID
 	DeveloperID uuid.UUID
-	Events      []string
+	Column3     []string
 }
 
 type InsertEventRow struct {
 	ID          uuid.UUID
 	DeveloperID uuid.UUID
+	Name        string
 	Url         string
 	IsActive    bool
 	Events      []string
+	MailboxIds  []uuid.UUID
 }
 
 func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) (InsertEventRow, error) {
-	row := q.db.QueryRowContext(ctx, insertEvent, arg.ID, arg.DeveloperID, pq.Array(arg.Events))
+	row := q.db.QueryRowContext(ctx, insertEvent, arg.ID, arg.DeveloperID, pq.Array(arg.Column3))
 	var i InsertEventRow
 	err := row.Scan(
 		&i.ID,
 		&i.DeveloperID,
+		&i.Name,
 		&i.Url,
 		&i.IsActive,
 		pq.Array(&i.Events),
+		pq.Array(&i.MailboxIds),
 	)
 	return i, err
 }
@@ -311,23 +340,32 @@ func (q *Queries) LinkWebhookMailbox(ctx context.Context, arg LinkWebhookMailbox
 }
 
 const listWebhookDeadLetters = `-- name: ListWebhookDeadLetters :many
-SELECT id, webhook_id, mailbox_id, message_id, event, url, reason, attempts, created_at
-FROM webhook_dead_letters
-WHERE developer_id = $1
-ORDER BY created_at DESC
+SELECT d.id, d.webhook_id, d.mailbox_id, d.message_id, d.event, d.url, d.reason, d.attempts, d.created_at, d.seen,
+    m.address AS mailbox_address,
+    msg.sender AS message_sender,
+    msg.subject AS message_subject
+FROM webhook_dead_letters d
+LEFT JOIN mailboxes m ON m.id = d.mailbox_id
+LEFT JOIN messages msg ON msg.id = d.message_id
+WHERE d.developer_id = $1
+ORDER BY d.created_at DESC
 LIMIT 100
 `
 
 type ListWebhookDeadLettersRow struct {
-	ID        uuid.UUID
-	WebhookID uuid.UUID
-	MailboxID uuid.NullUUID
-	MessageID uuid.NullUUID
-	Event     string
-	Url       string
-	Reason    string
-	Attempts  int32
-	CreatedAt time.Time
+	ID             uuid.UUID
+	WebhookID      uuid.UUID
+	MailboxID      uuid.NullUUID
+	MessageID      uuid.NullUUID
+	Event          string
+	Url            string
+	Reason         string
+	Attempts       int32
+	CreatedAt      time.Time
+	Seen           bool
+	MailboxAddress sql.NullString
+	MessageSender  sql.NullString
+	MessageSubject sql.NullString
 }
 
 func (q *Queries) ListWebhookDeadLetters(ctx context.Context, developerID uuid.UUID) ([]ListWebhookDeadLettersRow, error) {
@@ -349,6 +387,10 @@ func (q *Queries) ListWebhookDeadLetters(ctx context.Context, developerID uuid.U
 			&i.Reason,
 			&i.Attempts,
 			&i.CreatedAt,
+			&i.Seen,
+			&i.MailboxAddress,
+			&i.MessageSender,
+			&i.MessageSubject,
 		); err != nil {
 			return nil, err
 		}
@@ -364,18 +406,24 @@ func (q *Queries) ListWebhookDeadLetters(ctx context.Context, developerID uuid.U
 }
 
 const listWebhooks = `-- name: ListWebhooks :many
-SELECT id, developer_id, url, is_active, events
-FROM webhooks
-WHERE developer_id = $1
-ORDER BY created_at DESC
+SELECT w.id, w.developer_id, w.name, w.url, w.is_active, w.events,
+    COALESCE(
+        ARRAY(SELECT wm.mailbox_id::uuid FROM webhook_mailboxes wm WHERE wm.webhook_id = w.id ORDER BY wm.mailbox_id::uuid),
+        '{}'::uuid[]
+    )::uuid[] AS mailbox_ids
+FROM webhooks w
+WHERE w.developer_id = $1
+ORDER BY w.created_at DESC
 `
 
 type ListWebhooksRow struct {
 	ID          uuid.UUID
 	DeveloperID uuid.UUID
+	Name        string
 	Url         string
 	IsActive    bool
 	Events      []string
+	MailboxIds  []uuid.UUID
 }
 
 func (q *Queries) ListWebhooks(ctx context.Context, developerID uuid.UUID) ([]ListWebhooksRow, error) {
@@ -390,9 +438,11 @@ func (q *Queries) ListWebhooks(ctx context.Context, developerID uuid.UUID) ([]Li
 		if err := rows.Scan(
 			&i.ID,
 			&i.DeveloperID,
+			&i.Name,
 			&i.Url,
 			&i.IsActive,
 			pq.Array(&i.Events),
+			pq.Array(&i.MailboxIds),
 		); err != nil {
 			return nil, err
 		}
@@ -405,6 +455,25 @@ func (q *Queries) ListWebhooks(ctx context.Context, developerID uuid.UUID) ([]Li
 		return nil, err
 	}
 	return items, nil
+}
+
+const markWebhookDeadLetterSeen = `-- name: MarkWebhookDeadLetterSeen :one
+UPDATE webhook_dead_letters
+SET seen = TRUE
+WHERE id = $1 AND developer_id = $2
+RETURNING id
+`
+
+type MarkWebhookDeadLetterSeenParams struct {
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+}
+
+func (q *Queries) MarkWebhookDeadLetterSeen(ctx context.Context, arg MarkWebhookDeadLetterSeenParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, markWebhookDeadLetterSeen, arg.ID, arg.DeveloperID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const removeWebhookMailbox = `-- name: RemoveWebhookMailbox :one
@@ -428,4 +497,54 @@ func (q *Queries) RemoveWebhookMailbox(ctx context.Context, arg RemoveWebhookMai
 	var mailbox_id uuid.UUID
 	err := row.Scan(&mailbox_id)
 	return mailbox_id, err
+}
+
+const updateWebhook = `-- name: UpdateWebhook :one
+UPDATE webhooks w
+SET name = COALESCE(NULLIF($3::text, ''), name),
+    is_active = $4::boolean,
+    updated_at = CURRENT_TIMESTAMP
+WHERE w.id = $1 AND w.developer_id = $2
+RETURNING w.id, w.developer_id, w.name, w.url, w.is_active, w.events,
+    COALESCE(
+        ARRAY(SELECT wm.mailbox_id::uuid FROM webhook_mailboxes wm WHERE wm.webhook_id = w.id ORDER BY wm.mailbox_id::uuid),
+        '{}'::uuid[]
+    )::uuid[] AS mailbox_ids
+`
+
+type UpdateWebhookParams struct {
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+	Column3     string
+	Column4     bool
+}
+
+type UpdateWebhookRow struct {
+	ID          uuid.UUID
+	DeveloperID uuid.UUID
+	Name        string
+	Url         string
+	IsActive    bool
+	Events      []string
+	MailboxIds  []uuid.UUID
+}
+
+func (q *Queries) UpdateWebhook(ctx context.Context, arg UpdateWebhookParams) (UpdateWebhookRow, error) {
+	row := q.db.QueryRowContext(ctx, updateWebhook,
+		arg.ID,
+		arg.DeveloperID,
+		arg.Column3,
+		arg.Column4,
+	)
+	var i UpdateWebhookRow
+	err := row.Scan(
+		&i.ID,
+		&i.DeveloperID,
+		&i.Name,
+		&i.Url,
+		&i.IsActive,
+		pq.Array(&i.Events),
+		pq.Array(&i.MailboxIds),
+	)
+	return i, err
 }

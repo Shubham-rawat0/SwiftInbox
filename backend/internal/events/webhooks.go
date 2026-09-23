@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/repository/postgres"
 	"github.com/google/uuid"
 )
 

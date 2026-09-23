@@ -1,0 +1,1192 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SwiftInbox External Developer API",
+    "version": "1.0.0",
+    "description": "Public, developer-facing API for disposable mailboxes, messages, attachments, and webhooks.\n\nEvery endpoint under `/api/v1/*` is protected by an API key (`RequireAPIKey`) and passes through the usage metering middleware (`WithUsage`).\n\n## Authentication\n\nAPI keys are issued to developer accounts and created in the developer dashboard (**Api keys** page). Authenticate every request by sending the key as a Bearer token:\n\n```\nAuthorization: Bearer dev_<64 hex characters>\n```\n\nKeys are validated against their SHA-256 hash server-side. A missing, malformed, unknown, or revoked key returns `401 Unauthorized`. The middleware also accepts the legacy `Authentication: Bearer <key>` header.\n\n> Example values in this specification are illustrative. Substitute your own API key when using **Authorize** / Try it out.\n\n## Usage metering\n\nEvery `/api/v1/*` request records usage against the developer account and the specific API key used. If the developer's monthly quota is exceeded the request is rejected with `429 Too Many Requests` and a body of `{\"error\":\"usage quota exceeded\"}`.\n\nEach operation carries an `x-usage` extension describing the usage operation name and the number of credits it consumes, for example `\"x-usage\": {\"operation\": \"message.get\", \"credits\": 3}`. Requests are also rate-limited per IP (see `429`).\n\n## Error format\n\nNon-OK responses use a simple envelope:\n\n```json\n{\"error\": \"<message>\"}\n```"
+  },
+  "tags": [
+    {
+      "name": "Mailboxes",
+      "description": "Create, list, fetch, and delete disposable mailboxes."
+    },
+    {
+      "name": "Messages",
+      "description": "List messages in a mailbox and fetch individual messages."
+    },
+    {
+      "name": "Attachments",
+      "description": "Download message attachments."
+    },
+    {
+      "name": "Webhooks",
+      "description": "Receive realtime HTTP callbacks when something happens on your mailboxes."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/mailboxes": {
+      "post": {
+        "tags": ["Mailboxes"],
+        "summary": "Create a mailbox",
+        "description": "Creates a mailbox for the authenticated developer. The `username` field must be a full mailbox address on the configured mail domain (for example `dev-123@temp.mail.at`).",
+        "operationId": "createMailbox",
+        "x-usage": { "operation": "mailbox.create", "credits": 1, "category": "mailbox" },
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RequestEmail" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mailbox created.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Mailbox" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "get": {
+        "tags": ["Mailboxes"],
+        "summary": "List mailboxes",
+        "description": "Lists all mailboxes owned by the authenticated developer.",
+        "operationId": "listMailboxes",
+        "x-usage": { "operation": "mailbox.list", "credits": 1, "category": "mailbox" },
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Mailboxes owned by the developer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Mailbox" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/mailboxes/custom": {
+      "post": {
+        "tags": ["Mailboxes"],
+        "summary": "Create a custom mailbox",
+        "description": "Creates a mailbox from a username (the local part of the address). The username is sanitized to lowercase alphanumeric characters plus `.`, `-`, and `_` and combined with the configured mail domain. An address that is already in use returns `409 Conflict`.",
+        "operationId": "createCustomMailbox",
+        "x-usage": { "operation": "mailbox.create", "credits": 1, "category": "mailbox" },
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RequestEmail" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mailbox created.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Mailbox" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/mailboxes/{id}": {
+      "get": {
+        "tags": ["Mailboxes"],
+        "summary": "Get a mailbox",
+        "description": "Fetches a single mailbox owned by the authenticated developer by its UUID.",
+        "operationId": "getMailbox",
+        "x-usage": { "operation": "mailbox.list", "credits": 1, "category": "mailbox" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Mailbox UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The mailbox.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Mailbox" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "delete": {
+        "tags": ["Mailboxes"],
+        "summary": "Delete a mailbox by id",
+        "description": "Deletes a mailbox owned by the authenticated developer, identified by its UUID. The endpoint also accepts a mailbox address (see `DELETE /api/v1/mailboxes/address/{address}`).",
+        "operationId": "deleteMailboxById",
+        "x-usage": { "operation": "mailbox.delete", "credits": 1, "category": "mailbox" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Mailbox UUID (or, in practice, a mailbox address).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mailbox deleted.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeletedMailbox" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/mailboxes/address/{address}": {
+      "delete": {
+        "tags": ["Mailboxes"],
+        "summary": "Delete a mailbox by address",
+        "description": "Deletes a mailbox owned by the authenticated developer, identified by its full address (for example `dev-123@temp.mail.at`).",
+        "operationId": "deleteMailboxByAddress",
+        "x-usage": { "operation": "mailbox.delete", "credits": 1, "category": "mailbox" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "description": "Full mailbox address.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mailbox deleted.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeletedMailbox" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/mailboxes/{address}/messages": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "List messages in a mailbox",
+        "description": "Lists the messages in a mailbox reached by address. A developer may read their own mailboxes and any public mailbox; accessing another developer's mailbox returns `403 Forbidden`.",
+        "operationId": "listMessages",
+        "x-usage": { "operation": "message.list", "credits": 3, "category": "message" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "description": "Mailbox address.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages in the mailbox.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessagesResult" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/mailboxes/{address}/message": {
+      "post": {
+        "tags": ["Messages"],
+        "summary": "List messages in a mailbox (POST)",
+        "description": "Alternative POST form of `GET /api/v1/mailboxes/{address}/messages`. Takes no request body.",
+        "operationId": "listMessagesPost",
+        "x-usage": { "operation": "message.list", "credits": 3, "category": "message" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "description": "Mailbox address.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages in the mailbox.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessagesResult" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/messages/{id}": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Get a message",
+        "description": "Fetches a single message body by UUID, including parsed text, HTML, and attachment metadata.",
+        "operationId": "getMessage",
+        "x-usage": { "operation": "message.get", "credits": 3, "category": "message" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Message UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The message.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessageDetail" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/message/{id}": {
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Get a message (POST)",
+        "description": "Alternative POST form of `GET /api/v1/messages/{id}`. Takes no request body.",
+        "operationId": "getMessagePost",
+        "x-usage": { "operation": "message.get", "credits": 3, "category": "message" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Message UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The message.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessageDetail" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/messages/{id}/attachment/{index}": {
+      "get": {
+        "tags": ["Attachments"],
+        "summary": "Download an attachment",
+        "description": "Downloads a single attachment of a message by zero-based index. The response is the raw attachment bytes; its `Content-Type` is the attachment's content type (or `application/octet-stream` when unknown) and `Content-Disposition` is set to `inline` or `attachment`.",
+        "operationId": "getAttachment",
+        "x-usage": { "operation": "attachment.get", "credits": 2, "category": "message" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Message UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "description": "Zero-based attachment index.",
+            "schema": { "type": "integer", "minimum": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The raw attachment bytes.",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/webhooks": {
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "List webhooks",
+        "description": "Lists all webhooks owned by the authenticated developer.",
+        "operationId": "listWebhooks",
+        "x-usage": { "operation": "webhook.get", "credits": 1, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "The developer's webhooks.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Webhook" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Create a webhook",
+        "description": "Creates a webhook and links it to one or more owned mailboxes. The returned webhook includes the one-time `secret` used to verify signatures in the `X-Webhook-Signature` header.",
+        "operationId": "createWebhook",
+        "x-usage": { "operation": "webhook.create", "credits": 5, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook created.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/webhooks/create": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Create a webhook (POST /create)",
+        "description": "Alias of `POST /api/v1/webhooks` that accepts the same request body and returns the same response.",
+        "operationId": "createWebhookAlias",
+        "x-usage": { "operation": "webhook.create", "credits": 5, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook created.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/webhooks/dead-letters": {
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "List dead letters",
+        "description": "Lists undelivered webhook deliveries (dead letters) that exhausted retries for the authenticated developer.",
+        "operationId": "listWebhookDeadLetters",
+        "x-usage": { "operation": "webhook.dead_letters", "credits": 1, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "The developer's dead letters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/DeadLetter" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/webhooks/dead-letters/{id}/seen": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Mark a dead letter as seen",
+        "description": "Marks a dead letter as seen so it no longer counts as unread.",
+        "operationId": "markWebhookDeadLetterSeen",
+        "x-usage": { "operation": "webhook.dead_letter_seen", "credits": 1, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Dead letter UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dead letter marked as seen.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeadLetterSeen" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/webhooks/{id}": {
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "Get a webhook",
+        "description": "Fetches a single webhook owned by the authenticated developer by its UUID.",
+        "operationId": "getWebhook",
+        "x-usage": { "operation": "webhook.get", "credits": 1, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The webhook.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "patch": {
+        "tags": ["Webhooks"],
+        "summary": "Update a webhook",
+        "description": "Updates the `name` and/or `is_active` fields of a webhook. Omitted fields keep their current values.",
+        "operationId": "updateWebhook",
+        "x-usage": { "operation": "webhook.update", "credits": 1, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated webhook.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "delete": {
+        "tags": ["Webhooks"],
+        "summary": "Delete a webhook",
+        "description": "Deletes a webhook owned by the authenticated developer.",
+        "operationId": "deleteWebhook",
+        "x-usage": { "operation": "webhook.delete", "credits": 1, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook deleted.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebhookDeleted" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/webhooks/{id}/mailboxes": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Link a mailbox to a webhook",
+        "description": "Links a mailbox owned by the developer to a webhook so events are delivered for it. Linking a mailbox that is already linked returns `409 Conflict`.",
+        "operationId": "linkWebhookMailbox",
+        "x-usage": { "operation": "webhook.create", "credits": 5, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookMailboxRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mailbox linked to the webhook.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebhookMailboxResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/webhooks/{id}/mailboxes/{mailboxID}": {
+      "delete": {
+        "tags": ["Webhooks"],
+        "summary": "Unlink a mailbox from a webhook",
+        "description": "Removes a mailbox from a webhook so events are no longer delivered for it.",
+        "operationId": "unlinkWebhookMailbox",
+        "x-usage": { "operation": "webhook.delete", "credits": 1, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "mailboxID",
+            "in": "path",
+            "required": true,
+            "description": "Mailbox UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mailbox removed from the webhook.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebhookMailboxResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/webhooks/{id}/events/add": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Subscribe to webhook events",
+        "description": "Adds one or more events to a webhook's subscription.",
+        "operationId": "addWebhookEvents",
+        "x-usage": { "operation": "webhook.events.add", "credits": 1, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookEventsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated webhook.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/webhooks/{id}/events/remove": {
+      "delete": {
+        "tags": ["Webhooks"],
+        "summary": "Unsubscribe from webhook events",
+        "description": "Removes one or more events from a webhook's subscription.",
+        "operationId": "removeWebhookEvents",
+        "x-usage": { "operation": "webhook.events.remove", "credits": 1, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookEventsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated webhook.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/webhooks/{id}/test": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Send a test event",
+        "description": "Delivers a test `webhook.test` event to the webhook endpoint and reports the delivery result. Testing an inactive webhook returns `409 Conflict`.",
+        "operationId": "testWebhook",
+        "x-usage": { "operation": "webhook.test", "credits": 2, "category": "api" },
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook UUID.",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delivery attempt finished.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebhookTestResult" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "dev_<64 hex chars>",
+        "description": "API key sent as a Bearer token in the `Authorization` header (the middleware also accepts the legacy `Authentication` header):\n\n```\nAuthorization: Bearer dev_<64 hex characters>\n```\n\nCreate or manage keys in the developer dashboard (**Api keys** page)."
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "The request is missing or malformed (invalid path value, invalid JSON body, wrong domain, invalid expiry, etc.).",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing, malformed, unknown, or revoked API key.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The authenticated developer is not allowed to access the requested resource (for example another developer's mailbox).",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The requested mailbox, message, attachment, webhook, or dead letter does not exist (or does not belong to the developer).",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The request conflicts with the current state of the resource (mailbox already exists, mailbox already linked, webhook inactive).",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "The developer's usage quota was exceeded (`{\"error\":\"usage quota exceeded\"}`) or the IP rate limit was reached.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "An unexpected server error occurred.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Human-readable error message."
+          }
+        },
+        "required": ["error"]
+      },
+      "RequestEmail": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "For `POST /api/v1/mailboxes` this must be a full mailbox address on the configured mail domain (for example `dev-123@temp.mail.at`). For `POST /api/v1/mailboxes/custom` this is the local part (for example `dev-123`), which is sanitized and combined with the mail domain."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional expiry timestamp. Must be in the future; omitted to use the default mailbox lifetime."
+          }
+        },
+        "required": ["username"]
+      },
+      "Mailbox": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Mailbox id. Present on get/list responses; not returned when a mailbox is created."
+          },
+          "address": { "type": "string", "description": "Full mailbox address." },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "createdBy": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Developer id that created the mailbox, or null for public mailboxes."
+          }
+        },
+        "required": ["address", "createdAt", "expiresAt", "createdBy"]
+      },
+      "DeletedMailbox": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "mailbox deleted" },
+          "address": { "type": "string" },
+          "id": { "type": "string", "format": "uuid" }
+        },
+        "required": ["message", "address", "id"]
+      },
+      "MessagePreview": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "sender": { "type": "string", "example": "sender@example.com" },
+          "subject": { "type": "string" },
+          "preview": { "type": "string", "description": "Plain-text preview of the message body." },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "sender", "subject", "preview", "createdAt"]
+      },
+      "MessagesResult": {
+        "type": "object",
+        "properties": {
+          "address": { "type": "string" },
+          "messages": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MessagePreview" }
+          },
+          "messageCount": { "type": "integer" }
+        },
+        "required": ["address", "messages", "messageCount"]
+      },
+      "AttachmentInfo": {
+        "type": "object",
+        "properties": {
+          "filename": { "type": "string" },
+          "contentType": { "type": "string" },
+          "size": { "type": "integer", "description": "Attachment size in bytes." },
+          "contentId": { "type": "string" },
+          "index": { "type": "integer", "description": "Zero-based index used to fetch the attachment." },
+          "inline": { "type": "boolean", "description": "True for inline (embedded) parts such as images." }
+        },
+        "required": ["filename", "contentType", "size", "contentId", "index", "inline"]
+      },
+      "ParsedData": {
+        "type": "object",
+        "properties": {
+          "subject": { "type": "string" },
+          "from": { "type": "string" },
+          "text": { "type": "string", "description": "Plain-text body." },
+          "html": { "type": "string", "description": "HTML body." },
+          "attachments": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AttachmentInfo" }
+          }
+        },
+        "required": ["subject", "from", "text", "html", "attachments"]
+      },
+      "MessageDetail": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "from": { "type": "string", "example": "sender@example.com" },
+          "subject": { "type": "string" },
+          "body": {
+            "type": "string",
+            "description": "Base64-encoded raw MIME message (the Go server serializes the raw message bytes as base64)."
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "mailbox": { "type": "string", "description": "Mailbox address the message belongs to." },
+          "parsedData": { "$ref": "#/components/schemas/ParsedData" }
+        },
+        "required": ["id", "from", "subject", "body", "createdAt", "mailbox", "parsedData"]
+      },
+      "WebhookCreateRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Optional label; defaults to the endpoint URL when omitted." },
+          "url": { "type": "string", "format": "uri", "example": "https://example.com/webhooks/receiver" },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WebhookEvent" },
+            "description": "Events the webhook subscribes to. At least one is required."
+          },
+          "mailbox_ids": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" },
+            "description": "Mailboxes to link to the webhook. At least one is required."
+          }
+        },
+        "required": ["url", "events", "mailbox_ids"]
+      },
+      "WebhookUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "is_active": { "type": "boolean", "description": "Pause or resume delivery of events." }
+        }
+      },
+      "WebhookEventsRequest": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WebhookEvent" },
+            "description": "Events to add to or remove from the webhook. At least one is required."
+          }
+        },
+        "required": ["events"]
+      },
+      "WebhookMailboxRequest": {
+        "type": "object",
+        "properties": {
+          "mailbox_id": { "type": "string", "format": "uuid" }
+        },
+        "required": ["mailbox_id"]
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "developer_id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "url": { "type": "string", "format": "uri" },
+          "is_active": { "type": "boolean" },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WebhookEvent" }
+          },
+          "secret": {
+            "type": "string",
+            "description": "Webhook signing secret sent in the `X-Webhook-Signature` header of deliveries. Only returned when a webhook is first created."
+          },
+          "mailbox_ids": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          }
+        },
+        "required": ["id", "developer_id", "name", "url", "is_active", "events", "mailbox_ids"]
+      },
+      "WebhookEvent": {
+        "type": "string",
+        "enum": ["email.received", "email.deleted", "mailbox.expired"],
+        "description": "The events a webhook can subscribe to."
+      },
+      "WebhookDeleted": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "webhook deleted" },
+          "id": { "type": "string", "format": "uuid" }
+        },
+        "required": ["message", "id"]
+      },
+      "WebhookMailboxResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "mailbox added to webhook" },
+          "mailbox_id": { "type": "string", "format": "uuid" }
+        },
+        "required": ["message", "mailbox_id"]
+      },
+      "WebhookTestResult": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "True when the endpoint replied with a 2xx status."
+          },
+          "statusCode": { "type": "integer", "description": "HTTP status code returned by the webhook endpoint." }
+        },
+        "required": ["success", "statusCode"]
+      },
+      "DeadLetter": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "webhook_id": { "type": "string", "format": "uuid" },
+          "mailbox_id": { "type": ["string", "null"], "format": "uuid" },
+          "mailbox_address": { "type": ["string", "null"] },
+          "message_id": { "type": ["string", "null"], "format": "uuid" },
+          "message_sender": { "type": ["string", "null"] },
+          "message_subject": { "type": ["string", "null"] },
+          "event": { "$ref": "#/components/schemas/WebhookEvent" },
+          "url": { "type": "string", "description": "The webhook endpoint the delivery was attempted against." },
+          "reason": { "type": "string", "description": "Why the delivery failed." },
+          "attempts": { "type": "integer" },
+          "seen": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "id",
+          "webhook_id",
+          "mailbox_id",
+          "mailbox_address",
+          "message_id",
+          "message_sender",
+          "message_subject",
+          "event",
+          "url",
+          "reason",
+          "attempts",
+          "seen",
+          "created_at"
+        ]
+      },
+      "DeadLetterSeen": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "dead letter marked as seen" },
+          "id": { "type": "string", "format": "uuid" }
+        },
+        "required": ["message", "id"]
+      }
+    }
+  }
+}

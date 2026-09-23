@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	queue "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/events"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
+	queue "github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/events"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/repository/postgres"
 )
 
 type Scheduler struct {

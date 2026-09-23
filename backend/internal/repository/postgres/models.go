@@ -76,6 +76,7 @@ type Webhook struct {
 	IsActive        bool
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	Name            string
 }
 
 type WebhookDeadLetter struct {
@@ -89,6 +90,7 @@ type WebhookDeadLetter struct {
 	Reason      string
 	Attempts    int32
 	CreatedAt   time.Time
+	Seen        bool
 }
 
 type WebhookMailbox struct {

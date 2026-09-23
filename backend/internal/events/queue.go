@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/repository/postgres"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/utils"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -130,7 +130,7 @@ func (r *RabbitMQ) AddQueue(name string) error {
 func (r *RabbitMQ) AddRetryQueue(name, targetQueue string) error {
 	args := amqp.Table{
 		"x-dead-letter-exchange":    "",
-		"x-dead-letter-routing-key": targetQueue,
+		"x-dead-letter-routing-key": targetQueue,  //will send msg to these queue after ttl
 	}
 	_, err := r.Ch.QueueDeclare(name, true, false, false, false, args)
 	if err != nil {
@@ -318,7 +318,7 @@ func (r *RabbitMQ) scheduleRetry(ctx context.Context, delivery amqp.Delivery, ev
 		ContentType:  delivery.ContentType,
 		DeliveryMode: amqp.Persistent,
 		Headers:      headers,
-		Expiration:   strconv.FormatInt(delayMs, 10),
+		Expiration:   strconv.FormatInt(delayMs, 10), //ttl for message, after expiration sends to targetqueue, x-dead-letter-routing-key(webhook-event)
 		Body:         delivery.Body,
 	}
 

@@ -4,10 +4,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/handler"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/middleware"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/api/docs"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/api/handler"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/api/middleware"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/repository/postgres"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/utils"
 )
 
 type Router struct {
@@ -61,6 +62,9 @@ func NewServerMux(queries *postgres.Queries) *Router {
 		handler.WriteJSON(w, 200, "healthy")
 	}))
 
+	// External Developer API OpenAPI 3.1 documentation (public)
+	mux.Handle("GET /docs/{path...}", docs.Handler())
+
 	// 2. DEVELOPER DASHBOARD (/api/dev/* with RequireDeveloperSession)
 	mux.Handle("GET /api/dev/{id}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(developerHandler.GetDeveloper)))
 
@@ -80,7 +84,9 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("GET /api/dev/webhooks", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.ListWebhooks)))
 	mux.Handle("POST /api/dev/webhooks", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.CreateWebhook)))
 	mux.Handle("GET /api/dev/webhooks/dead-letters", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.GetDeadLetters)))
+	mux.Handle("POST /api/dev/webhooks/dead-letters/{id}/seen", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.MarkDeadLetterSeen)))
 	mux.Handle("GET /api/dev/webhooks/{id}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.GetWebhook)))
+	mux.Handle("PATCH /api/dev/webhooks/{id}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.UpdateWebhook)))
 	mux.Handle("DELETE /api/dev/webhooks/{id}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.DeleteWebhook)))
 	mux.Handle("POST /api/dev/webhooks/{id}/mailboxes", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.AddMailbox)))
 	mux.Handle("DELETE /api/dev/webhooks/{id}/mailboxes/{mailboxID}", sessionMiddleware.RequireDeveloperSession(http.HandlerFunc(webhookHandler.RemoveMailbox)))
@@ -108,7 +114,9 @@ func NewServerMux(queries *postgres.Queries) *Router {
 	mux.Handle("POST /api/v1/webhooks", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.CreateWebhook))))
 	mux.Handle("POST /api/v1/webhooks/create", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.CreateWebhook))))
 	mux.Handle("GET /api/v1/webhooks/dead-letters", utils.WithUsage("webhook.dead_letters", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.GetDeadLetters))))
+	mux.Handle("POST /api/v1/webhooks/dead-letters/{id}/seen", utils.WithUsage("webhook.dead_letter_seen", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.MarkDeadLetterSeen))))
 	mux.Handle("GET /api/v1/webhooks/{id}", utils.WithUsage("webhook.get", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.GetWebhook))))
+	mux.Handle("PATCH /api/v1/webhooks/{id}", utils.WithUsage("webhook.update", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.UpdateWebhook))))
 	mux.Handle("DELETE /api/v1/webhooks/{id}", utils.WithUsage("webhook.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.DeleteWebhook))))
 	mux.Handle("POST /api/v1/webhooks/{id}/mailboxes", utils.WithUsage("webhook.create", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.AddMailbox))))
 	mux.Handle("DELETE /api/v1/webhooks/{id}/mailboxes/{mailboxID}", utils.WithUsage("webhook.delete", apiMiddlewarehandler.RequireAPIKey(http.HandlerFunc(webhookHandler.RemoveMailbox))))

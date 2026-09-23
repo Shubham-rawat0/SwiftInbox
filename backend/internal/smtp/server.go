@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"time"
 
-	queue "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/events"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/parser"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
+	queue "github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/events"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/parser"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/repository/postgres"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/utils"
 	gosmtp "github.com/emersion/go-smtp"
 	"github.com/google/uuid"
 )

@@ -10,13 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/cmd/worker"
-	internal "github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/router"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/cleanup"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/database"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/repository/postgres"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/smtp"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/cmd/worker"
+	internal "github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/api"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/api/router"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/cleanup"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/database"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/repository/postgres"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/smtp"
 	"github.com/joho/godotenv"
 )
 

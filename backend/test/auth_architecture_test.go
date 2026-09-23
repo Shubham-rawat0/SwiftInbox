@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/api/router"
-	"github.com/Shubham-rawat0/temp-mail/SwiftIndbox/backend/internal/utils"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/api/router"
+	"github.com/Shubham-rawat0/temp-mail/SwiftInbox/backend/internal/utils"
 	"github.com/google/uuid"
 )
 
