@@ -1,7 +1,6 @@
 "use client"
 
 import { MailboxNavigation } from "@/components/developer/MailboxNavigation"
-import { DeveloperSessionGate } from "@/components/developer/DeveloperSessionGate"
 import { deleteDeveloperMailbox, isApiError, listDeveloperMailboxes } from "@/lib/api"
 import { MailboxResponse } from "@/lib/types"
 import { Check, Copy, Inbox, Trash2 } from "lucide-react"
@@ -13,11 +12,7 @@ const MAIL_DOMAIN =
   process.env.NEXT_PUBLIC_MAIL_DOMAIN || "temp.mail.at"
 
 export default function DeveloperPage() {
-  return (
-    <DeveloperSessionGate>
-      <DeveloperMailboxList />
-    </DeveloperSessionGate>
-  )
+  return <DeveloperMailboxList />
 }
 
 function DeveloperMailboxList() {

@@ -1,7 +1,6 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { DeveloperSessionGate } from "@/components/developer/DeveloperSessionGate"
 import AttachmentView, { AttachmentFetch } from "@/components/mailbox/AttachmentView"
 import { fetchAttachment } from "@/lib/api"
 
@@ -24,14 +23,12 @@ export default function DeveloperAttachmentPage() {
   const localUsername = address.split("@")[0] || address
 
   return (
-    <DeveloperSessionGate>
-      <AttachmentView
-        username={address}
-        messageId={messageId}
-        index={index}
-        backHref={`/developer/mailbox/${localUsername}/message/${messageId}`}
-        fetchAttachment={fetchDeveloperAttachment}
-      />
-    </DeveloperSessionGate>
+    <AttachmentView
+      username={address}
+      messageId={messageId}
+      index={index}
+      backHref={`/developer/mailbox/${localUsername}/message/${messageId}`}
+      fetchAttachment={fetchDeveloperAttachment}
+    />
   )
 }

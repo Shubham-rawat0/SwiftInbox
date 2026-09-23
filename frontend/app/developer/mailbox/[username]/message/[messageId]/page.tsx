@@ -1,7 +1,6 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { DeveloperSessionGate } from "@/components/developer/DeveloperSessionGate"
 import MessageDetailView, { MessageDetailFetch } from "@/components/mailbox/MessageDetailView"
 import type { AttachmentFetch } from "@/components/mailbox/AttachmentView"
 import { fetchAttachment, fetchMessage } from "@/lib/api"
@@ -27,14 +26,12 @@ export default function DeveloperMessagePage() {
   const localUsername = address.split("@")[0] || address
 
   return (
-    <DeveloperSessionGate>
-      <MessageDetailView
-        username={address}
-        messageId={messageId}
-        backHref={`/developer/mailbox/${localUsername}`}
-        fetchMessage={fetchDeveloperMessage}
-        fetchAttachment={fetchDeveloperAttachment}
-      />
-    </DeveloperSessionGate>
+    <MessageDetailView
+      username={address}
+      messageId={messageId}
+      backHref={`/developer/mailbox/${localUsername}`}
+      fetchMessage={fetchDeveloperMessage}
+      fetchAttachment={fetchDeveloperAttachment}
+    />
   )
 }

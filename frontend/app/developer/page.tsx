@@ -1,7 +1,7 @@
 "use client"
 
 import { createCustomMailbox } from "@/lib/api"
-import { DeveloperSessionGate } from "@/components/developer/DeveloperSessionGate"
+import { useDeveloperProfile } from "@/components/layout/DeveloperProfileContext"
 import { useState } from "react"
 import { toast } from "sonner"
 
@@ -34,11 +34,11 @@ function expiryToDate(
 }
 
 export default function DeveloperMailboxesPage() {
-  return (
-    <DeveloperSessionGate>
-      {(developer) => <DeveloperMailboxCreator email={developer.Email} />}
-    </DeveloperSessionGate>
-  )
+  const { profile } = useDeveloperProfile()
+
+  if (!profile) return null
+
+  return <DeveloperMailboxCreator email={profile.email} />
 }
 
 function DeveloperMailboxCreator({ email }: { email: string }) {

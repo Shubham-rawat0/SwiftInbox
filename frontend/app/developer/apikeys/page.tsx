@@ -1,6 +1,5 @@
 "use client"
 
-import { DeveloperSessionGate } from "@/components/developer/DeveloperSessionGate"
 import {
   createDeveloperApiKey,
   getDeveloper,
@@ -45,11 +44,7 @@ const DOT_CLASSES = [
 ]
 
 export default function ApiKeysPage() {
-  return (
-    <DeveloperSessionGate>
-      <ApiKeysManager />
-    </DeveloperSessionGate>
-  )
+  return <ApiKeysManager />
 }
 
 function ApiKeysManager() {
@@ -73,7 +68,7 @@ function ApiKeysManager() {
 
         if (!isActive) return
 
-        setKeys(keysResult)
+        setKeys(keysResult.filter((key) => !isRevoked(key)))
         setProfile(profileResult)
         setFailed(false)
       } catch (error) {
@@ -836,6 +831,7 @@ function RevokeKeyDialog({
   onCancel: () => void
   onRevoked: () => void
 }) {
+  const [confirmText, setConfirmText] = useState("")
   const [revoking, setRevoking] = useState(false)
 
   useEffect(() => {
@@ -848,6 +844,9 @@ function RevokeKeyDialog({
     document.addEventListener("keydown", onKeyDown)
     return () => document.removeEventListener("keydown", onKeyDown)
   }, [revoking, onCancel])
+
+  const matches = confirmText === target.Name
+  const canRevoke = matches && !revoking
 
   const revoke = async () => {
     setRevoking(true)
@@ -881,6 +880,36 @@ function RevokeKeyDialog({
           immediately stop working.
         </p>
 
+        <div className="mt-4 rounded-xl border border-red-500/15 bg-red-500/[0.05] px-3.5 py-3">
+          <p className="truncate font-mono text-[13px] font-semibold text-red-700/90 dark:text-red-300/90">
+            {target.Name}
+          </p>
+          <p className="mt-0.5 truncate font-mono text-[11px] text-red-700/60 dark:text-red-300/50">
+            {maskedKey(target.ID)}
+          </p>
+        </div>
+
+        <label
+          htmlFor="api-key-revoke-confirm"
+          className="mb-2 mt-5 block text-xs font-medium text-black/50 dark:text-white/40"
+        >
+          Type <code className="font-mono">{target.Name}</code> to confirm
+        </label>
+        <input
+          id="api-key-revoke-confirm"
+          type="text"
+          autoFocus
+          autoComplete="off"
+          spellCheck={false}
+          value={confirmText}
+          onChange={(event) => setConfirmText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && canRevoke) void revoke()
+          }}
+          placeholder={`Type "${target.Name}"`}
+          className="h-11 w-full rounded-xl border border-black/[0.10] bg-[#fafaf9] px-3.5 text-sm outline-none transition placeholder:text-black/25 focus:border-red-500/40 focus:ring-4 focus:ring-red-500/[0.06] dark:border-white/[0.10] dark:bg-[#0b0c0c] dark:placeholder:text-white/20 dark:focus:border-red-500/40 dark:focus:ring-red-500/[0.06]"
+        />
+
         <div className="mt-5 flex items-center justify-end gap-2">
           <button
             type="button"
@@ -895,7 +924,7 @@ function RevokeKeyDialog({
             onClick={() => {
               void revoke()
             }}
-            disabled={revoking}
+            disabled={!canRevoke}
             className="h-10 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-600/85 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-30"
           >
             {revoking ? "Revoking..." : "Yes, revoke"}
