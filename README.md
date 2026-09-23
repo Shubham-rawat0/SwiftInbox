@@ -4,6 +4,10 @@ SwiftInbox is a disposable mailbox service with a developer platform on top.
 
 It provides public temporary inboxes, a developer dashboard for managing mailboxes, API keys and webhooks, and a metered external API at `/api/v1/*`.
 
+## Screenshot
+
+![Home](frontend/public/assets/home.png)
+
 ## Architecture
 
 ```text
