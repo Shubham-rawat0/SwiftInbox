@@ -66,7 +66,17 @@ func (s *ApiKeyService) CreateApiKey(ctx context.Context, devID uuid.UUID, name 
 }
 
 func (s *ApiKeyService) ListApiKeys(ctx context.Context, devID uuid.UUID) ([]postgres.GetUserApiKeysRow, error) {
-	return s.queries.GetUserApiKeys(ctx, devID)
+	keys, err := s.queries.GetUserApiKeys(ctx, devID)
+	if err != nil {
+		return nil, err
+	}
+	// A nil slice serializes to JSON "null", which breaks consumers that
+	// expect an array; normalize to an empty slice so an account with no
+	// keys returns [].
+	if keys == nil {
+		keys = []postgres.GetUserApiKeysRow{}
+	}
+	return keys, nil
 }
 
 func (s *ApiKeyService) RevokeDeveloperApiKey(ctx context.Context, devID uuid.UUID, keyID uuid.UUID) error {
@@ -93,4 +103,3 @@ func (s *ApiKeyService) RevokeApiKeyByID(ctx context.Context, keyID uuid.UUID) e
 	}
 	return nil
 }
-

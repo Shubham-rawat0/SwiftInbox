@@ -1,5 +1,6 @@
 -- +goose Up
 
+-- +goose StatementBegin
 DO $$
 BEGIN
 	IF NOT EXISTS (
@@ -11,6 +12,7 @@ BEGIN
 		ADD CONSTRAINT mailboxes_address_unique UNIQUE (address);
 	END IF;
 END $$;
+-- +goose StatementEnd
 
 -- +goose Down
 
