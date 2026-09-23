@@ -7,7 +7,6 @@ import { RefreshCw as Refresh, ArrowRightLeft, Copy, Check, MailX } from "lucide
 import Link from "next/link"
 import { toast } from "sonner"
 import { fetchMessages, isApiError } from "@/lib/api"
-import { trackEvent } from "@/lib/posthog"
 import type { Message } from "@/lib/types"
 
 export type MailboxFetch = (forceRefresh?: boolean) => Promise<{
@@ -36,7 +35,6 @@ function EmailAddressDisplay({ address }: { address: string }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(address)
-      trackEvent("email_copied", { username, method: "email_display_click", email_address: address })
       setCopied(true)
       toast.success("Email copied to clipboard!")
       setTimeout(() => setCopied(false), 1800)
@@ -64,13 +62,11 @@ function EmailAddressDisplay({ address }: { address: string }) {
 
 function ActionButtons({
   address,
-  username,
   homeHref,
   refreshing,
   onRefresh,
 }: {
   address: string
-  username: string
   homeHref: string
   refreshing: boolean
   onRefresh: () => void
@@ -82,7 +78,6 @@ function ActionButtons({
           className="bg-gray-900 hover:bg-gray-800 text-white text-sm sm:text-base flex-1 sm:flex-initial sm:min-w-[120px] shadow-sm transition-colors"
           onClick={async () => {
             await navigator.clipboard.writeText(address)
-            trackEvent('email_copied', { username, method: 'copy_button', email_address: address })
             toast.success('Email copied to clipboard!')
           }}
         >
@@ -331,7 +326,6 @@ export default function MailboxView({ address, basePath = "/mailbox", fetchMessa
   }, [isListening, failedAttempts, apiErrorState, hasStableEmails, emails.length, notFound])
 
   const manualRefresh = async () => {
-    trackEvent("manual_refresh", { username, current_email_count: emails.length })
     setApiErrorState(false)
     setFailedAttempts(0)
     setHasStableEmails(false)
@@ -343,11 +337,6 @@ export default function MailboxView({ address, basePath = "/mailbox", fetchMessa
     try {
       const result = await fetchEmails(true)
       setEmails(result.messages || [])
-      trackEvent("manual_refresh_success", {
-        username,
-        new_email_count: result.messages?.length || 0,
-        previous_email_count: emails.length,
-      })
       toast.success("Mailbox refreshed!")
     } catch (err) {
       const status = isApiError(err) ? err.status : undefined
@@ -355,8 +344,6 @@ export default function MailboxView({ address, basePath = "/mailbox", fetchMessa
         setNotFound(true)
         setIsListening(false)
       } else {
-        const e = err instanceof Error ? err : new Error(String(err))
-        trackEvent("manual_refresh_failed", { username, error: e.message })
         toast.error("Failed to refresh mailbox. Please try again later.")
       }
     } finally {
@@ -374,7 +361,7 @@ export default function MailboxView({ address, basePath = "/mailbox", fetchMessa
           <div className="max-w-4xl mx-auto px-4 py-4 sm:px-6 lg:px-8 sm:py-8">
             <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 mb-6 sm:mb-8">
               <EmailAddressDisplay address={address} />
-              <ActionButtons address={address} username={username} homeHref={homeHref} refreshing={refreshing} onRefresh={manualRefresh} />
+              <ActionButtons address={address} homeHref={homeHref} refreshing={refreshing} onRefresh={manualRefresh} />
             </div>
             <div className="space-y-3 sm:space-y-4">
               <EmailsList
@@ -401,7 +388,7 @@ export default function MailboxView({ address, basePath = "/mailbox", fetchMessa
             <div className="max-w-5xl mx-auto px-6 lg:px-8 py-10">
               <div className="border-2 border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50 dark:bg-[#0A0B0B] p-6 mb-8 shadow-sm hover:shadow-md transition-shadow duration-300">
                 <EmailAddressDisplay address={address} />
-                <ActionButtons address={address} username={username} homeHref={homeHref} refreshing={refreshing} onRefresh={manualRefresh} />
+                <ActionButtons address={address} homeHref={homeHref} refreshing={refreshing} onRefresh={manualRefresh} />
               </div>
               <div className="space-y-3 border-2 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#0A0B0B] rounded-2xl p-4 shadow-sm">
                 <EmailsList

@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { fetchAttachment, isApiError } from "@/lib/api";
-import { trackEvent } from "@/lib/posthog";
 import type { AttachmentResult } from "@/lib/types";
 import { ArrowLeft, Download, FileX } from "lucide-react";
 import Link from "next/link";
@@ -83,24 +82,8 @@ export default function AttachmentView({
                         if (isActive) setPreviewText(text);
                     }).catch((err) => console.error("Failed to read text preview:", err));
                 }
-
-                trackEvent("attachment_opened", {
-                    username: username,
-                    message_id: messageId,
-                    index: index,
-                    filename: result.filename,
-                    content_type: result.contentType,
-                    size: result.size,
-                });
             } catch (error) {
                 if (!isActive) return;
-                const err = error instanceof Error ? error : new Error(String(error));
-                trackEvent("attachment_open_failed", {
-                    username: username,
-                    message_id: messageId,
-                    index: index,
-                    error: err.message,
-                });
 
                 console.error("Failed to load attachment from API:", error);
 
@@ -153,14 +136,8 @@ export default function AttachmentView({
         anchor.click();
         document.body.removeChild(anchor);
 
-        trackEvent("attachment_downloaded", {
-            username: username,
-            message_id: messageId,
-            index: index,
-            filename: attachment.filename,
-        });
         toast.success("Download started");
-    }, [attachment, previewUrl, username, messageId, index]);
+    }, [attachment, previewUrl, index]);
 
     const openInNewTab = useCallback(() => {
         if (!previewUrl) return;

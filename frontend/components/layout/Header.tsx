@@ -35,7 +35,7 @@ export function Header() {
         <Link
           href="/"
           className="group flex items-center gap-2.5"
-          aria-label="TempMail home"
+          aria-label="SwiftInbox home"
         >
           <div className="flex size-9 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm transition-colors group-hover:bg-gray-100 dark:border-gray-700 dark:bg-[#191b1b] dark:group-hover:bg-[#202222]">
             <Mail
@@ -45,7 +45,7 @@ export function Header() {
           </div>
 
           <span className="font-custom text-xl font-semibold tracking-tight">
-            TempMail
+            SwiftInbox
           </span>
         </Link>
 
@@ -139,7 +139,7 @@ export function Header() {
               />
 
               <span className="hidden sm:inline">
-                Star on GitHub
+                GitHub
               </span>
             </Button>
           </a>

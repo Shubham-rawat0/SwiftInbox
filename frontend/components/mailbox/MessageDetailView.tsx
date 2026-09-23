@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { fetchAttachment, fetchMessage, isApiError } from "@/lib/api";
-import { trackEvent } from "@/lib/posthog";
 import { sanitizeEmailHtml } from "@/lib/sanitize";
 import type { AttachmentResult, MessageAttachment, MessageDetail } from "@/lib/types";
 import { ArrowLeft, Download, FileIcon, FileText, MailX } from "lucide-react";
@@ -186,15 +185,6 @@ export default function MessageDetailView({
         if (!isActive) return;
         setMessage(message);
 
-        trackEvent('message_opened', {
-          username: username,
-          message_id: messageId,
-          subject: message.subject,
-          from: message.from,
-          has_html: !!message.parsedData?.html,
-          has_text: !!message.parsedData?.text
-        });
-
         // Eagerly load previewable attachments (images/pdf/text) so they render inline.
         const previewable = (message.parsedData?.attachments ?? []).filter(isPreviewable);
         const urls: Record<string, string> = {};
@@ -216,12 +206,6 @@ export default function MessageDetailView({
         setAttachmentUrls(urls);
       } catch (error) {
         if (!isActive) return;
-        const err = error instanceof Error ? error : new Error(String(error));
-        trackEvent('message_open_failed', {
-          username: username,
-          message_id: messageId,
-          error: err.message
-        });
 
         console.error('Failed to load message from API:', error);
 
@@ -264,12 +248,6 @@ export default function MessageDetailView({
       document.body.removeChild(anchor);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-      trackEvent("attachment_downloaded", {
-        username: username,
-        message_id: messageId,
-        index: att.index,
-        filename: result.filename || att.filename,
-      });
       toast.success("Download started");
     } catch (error) {
       console.error("Failed to download attachment:", error);

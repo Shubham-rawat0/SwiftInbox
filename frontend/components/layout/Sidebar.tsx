@@ -143,8 +143,8 @@ export function AppSidebar() {
     
     <SidebarMenuItem>
       <SidebarMenuButton
-        render={<Link href="/developer/docs" />}
-        isActive={pathname.startsWith("/developer/docs")}
+        render={<Link href="/docs" />}
+        isActive={pathname.startsWith("/docs")}
         tooltip="Mailbox"
         className="h-9 gap-2.5 rounded-lg px-2.5 text-sm font-normal data-[active=true]:bg-sidebar-accent data-[active=true]:font-normal [&>svg]:size-[18px] [&>svg]:text-sidebar-foreground/70"
       >
