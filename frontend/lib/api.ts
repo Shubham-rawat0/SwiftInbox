@@ -430,9 +430,9 @@ export async function listDeveloperApiKeys(forceRefresh = false): Promise<ApiKey
                 throw await getApiError(response, 'Unable to list API keys');
             }
 
-            const result = await response.json();
-            setCachedData(cacheKey, result);
-            return result;
+            const result = (await response.json()) as ApiKeyUsageResponse[] | null;
+            setCachedData(cacheKey, result ?? []);
+            return result ?? [];
         } catch (error) {
             console.error('Error listing developer API keys:', error);
             throw error;

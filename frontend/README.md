@@ -4,6 +4,16 @@ Next.js (App Router) client for **SwiftInbox**. It renders the public temp-mailb
 developer dashboard (mailboxes, API keys, webhooks) and an embedded Swagger UI for the external API.
 Everything is client-rendered and talks directly to the Go backend over HTTP.
 
+## Screenshots
+
+![Home — create a temporary mailbox](public/assets/home.png)
+![Create mailboxes](public/assets/create%20mailboxes.png)
+![Developer mailboxes](public/assets/mailboxes.png)
+![API keys](public/assets/apikeys.png)
+![Webhooks](public/assets/webhooks.png)
+![Message detail](public/assets/message.png)
+![Attachment view](public/assets/attachment.png)
+
 ## Tech
 
 | Concern | Choice |
