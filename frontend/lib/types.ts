@@ -47,6 +47,7 @@ export interface MessageDetail {
 }
 
 export interface MailboxResponse {
+    id: string;
     address: string;
     createdAt: string;
     expiresAt: string;
@@ -123,14 +124,15 @@ export interface ApiKeyUsageResponse {
 export interface WebhookResponse {
     id: string;
     developer_id: string;
+    name: string;
     url: string;
     is_active: boolean;
     events: string[];
+    mailbox_ids: string[];
 }
 
 export interface CreateWebhookResponse extends WebhookResponse {
     secret: string;
-    mailbox_ids: string[];
 }
 
 export interface WebhookMailboxResponse {
@@ -152,11 +154,15 @@ export interface WebhookDeadLetterResponse {
     id: string;
     webhook_id: string;
     mailbox_id: string | null;
+    mailbox_address: string | null;
     message_id: string | null;
+    message_sender: string | null;
+    message_subject: string | null;
     event: string;
     url: string;
     reason: string;
     attempts: number;
+    seen: boolean;
     created_at: string;
 }
 

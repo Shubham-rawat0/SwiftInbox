@@ -1,6 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
 
-import type { ApiKeyUsageResponse, AttachmentResult, CreateApiKeyResponse, CreateDeveloperRequest, DeveloperDetailsResponse, DeveloperSignInRequest, DeveloperSignInResponse, MailboxDeleteResponse, MailboxResponse, Message, MessageDetail, RevokeDeveloperApiKeyResponse } from './types';
+import type { ApiKeyUsageResponse, AttachmentResult, CreateApiKeyResponse, CreateDeveloperRequest, CreateWebhookResponse, DeveloperDetailsResponse, DeveloperSignInRequest, DeveloperSignInResponse, MailboxDeleteResponse, MailboxResponse, Message, MessageDetail, RevokeDeveloperApiKeyResponse, WebhookDeadLetterResponse, WebhookDeleteResponse, WebhookMailboxResponse, WebhookResponse, WebhookTestResponse } from './types';
 import { toast } from 'sonner';
 
 /** Error thrown by the API layer that carries the HTTP status when available. */
@@ -471,4 +471,235 @@ export async function revokeDeveloperApiKey(id: string): Promise<RevokeDeveloper
     pendingRequests.delete('dev-api-keys');
 
     return response.json();
+}
+
+export async function listWebhooks(forceRefresh = false): Promise<WebhookResponse[]> {
+    const cacheKey = 'dev-webhooks-v2';
+
+    if (!forceRefresh) {
+        const cached = getCachedData<WebhookResponse[]>(cacheKey);
+        if (cached) {
+            return cached;
+        }
+    }
+
+    return deduplicate(cacheKey, async () => {
+        try {
+            const cacheBuster = forceRefresh ? `?_=${Date.now()}` : '';
+            const response = await fetch(`${API_BASE}/api/dev/webhooks${cacheBuster}`, {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-store',
+            });
+
+            if (!response.ok) {
+                throw await getApiError(response, 'Unable to list webhooks');
+            }
+
+            const result = await response.json();
+            setCachedData(cacheKey, result);
+            return result;
+        } catch (error) {
+            console.error('Error listing webhooks:', error);
+            throw error;
+        }
+    });
+}
+
+export async function createWebhook(input: {
+    name?: string;
+    url: string;
+    events: string[];
+    mailbox_ids: string[];
+}): Promise<CreateWebhookResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/webhooks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
+        body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to create webhook');
+    }
+
+    requestCache.delete('dev-webhooks-v2');
+    pendingRequests.delete('dev-webhooks-v2');
+
+    return response.json();
+}
+
+export async function updateWebhook(id: string, input: {
+    name?: string;
+    is_active?: boolean;
+}): Promise<WebhookResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/webhooks/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
+        body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to update webhook');
+    }
+
+    requestCache.delete('dev-webhooks-v2');
+    pendingRequests.delete('dev-webhooks-v2');
+
+    return response.json();
+}
+
+export async function deleteWebhook(id: string): Promise<WebhookDeleteResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/webhooks/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        cache: 'no-store',
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to delete webhook');
+    }
+
+    requestCache.delete('dev-webhooks-v2');
+    pendingRequests.delete('dev-webhooks-v2');
+
+    return response.json();
+}
+
+export async function addWebhookEvents(id: string, events: string[]): Promise<WebhookResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/webhooks/${encodeURIComponent(id)}/events/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
+        body: JSON.stringify({ events }),
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to update webhook events');
+    }
+
+    return response.json();
+}
+
+export async function removeWebhookEvents(id: string, events: string[]): Promise<WebhookResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/webhooks/${encodeURIComponent(id)}/events/remove`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
+        body: JSON.stringify({ events }),
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to update webhook events');
+    }
+
+    return response.json();
+}
+
+export async function linkWebhookMailbox(id: string, mailboxId: string): Promise<WebhookMailboxResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/webhooks/${encodeURIComponent(id)}/mailboxes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
+        body: JSON.stringify({ mailbox_id: mailboxId }),
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to link mailbox');
+    }
+
+    requestCache.delete('dev-webhooks-v2');
+    pendingRequests.delete('dev-webhooks-v2');
+
+    return response.json();
+}
+
+export async function unlinkWebhookMailbox(id: string, mailboxId: string): Promise<WebhookMailboxResponse> {
+    const response = await fetch(
+        `${API_BASE}/api/dev/webhooks/${encodeURIComponent(id)}/mailboxes/${encodeURIComponent(mailboxId)}`,
+        {
+            method: 'DELETE',
+            credentials: 'include',
+            cache: 'no-store',
+        }
+    );
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to unlink mailbox');
+    }
+
+    requestCache.delete('dev-webhooks-v2');
+    pendingRequests.delete('dev-webhooks-v2');
+
+    return response.json();
+}
+
+export async function testWebhook(id: string): Promise<WebhookTestResponse> {
+    const response = await fetch(`${API_BASE}/api/dev/webhooks/${encodeURIComponent(id)}/test`, {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to send test event');
+    }
+
+    return response.json();
+}
+
+export async function listWebhookDeadLetters(forceRefresh = false): Promise<WebhookDeadLetterResponse[]> {
+    const cacheKey = 'dev-webhook-dead-letters-v2';
+
+    if (!forceRefresh) {
+        const cached = getCachedData<WebhookDeadLetterResponse[]>(cacheKey);
+        if (cached) {
+            return cached;
+        }
+    }
+
+    return deduplicate(cacheKey, async () => {
+        try {
+            const cacheBuster = forceRefresh ? `?_=${Date.now()}` : '';
+            const response = await fetch(`${API_BASE}/api/dev/webhooks/dead-letters${cacheBuster}`, {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-store',
+            });
+
+            if (!response.ok) {
+                throw await getApiError(response, 'Unable to list failed deliveries');
+            }
+
+            const result = await response.json();
+            setCachedData(cacheKey, result);
+            return result;
+        } catch (error) {
+            console.error('Error listing webhook dead letters:', error);
+            throw error;
+        }
+    });
+}
+
+export async function markWebhookDeadLetterSeen(id: string): Promise<void> {
+    const cacheKey = 'dev-webhook-dead-letters-v2';
+
+    const response = await fetch(`${API_BASE}/api/dev/webhooks/dead-letters/${encodeURIComponent(id)}/seen`, {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+    });
+
+    if (!response.ok) {
+        throw await getApiError(response, 'Unable to mark failed delivery as seen');
+    }
+
+    requestCache.delete(cacheKey);
+    pendingRequests.delete(cacheKey);
 }
