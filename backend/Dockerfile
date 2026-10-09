@@ -7,7 +7,8 @@ RUN CGO_ENABLED=0 go build -o /out/fs ./cmd/api
 
 FROM golang:1.26-alpine AS migrate
 WORKDIR /src
-RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+COPY migrate-tool/go.mod migrate-tool/go.sum ./
+RUN go install -tags='no_mysql,no_sqlite3,no_ydb,no_clickhouse,no_mssql,no_vertica,no_libsql,no_azuresql' github.com/pressly/goose/v3/cmd/goose
 COPY migrations /src/migrations
 CMD ["sh", "-c", "/go/bin/goose -dir /src/migrations postgres \"$DB_URL\" up"]
 
