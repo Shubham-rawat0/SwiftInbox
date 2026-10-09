@@ -14,7 +14,7 @@ export default function DeveloperMailboxPage() {
 
   return (
     <DeveloperSessionGate>
-      <div className="min-h-[calc(100svh-4rem)] bg-[#f8f8f6] text-[#171717] dark:bg-[#0b0c0c] dark:text-white">
+      <div className="min-h-[calc(100svh-4rem)] bg-white text-[#171717] dark:bg-[#111313] dark:text-white">
         <main className="mx-auto w-full max-w-4xl px-5 py-6 sm:px-8 sm:py-8">
           <div className="animate-in fade-in duration-300 ease-out">
             <div className="mb-6 flex flex-wrap items-baseline justify-between gap-2">

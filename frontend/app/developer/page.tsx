@@ -94,7 +94,7 @@ function DeveloperMailboxCreator({ email }: { email: string }) {
   const emailAddress = `${username || "username"}@${MAIL_DOMAIN}`
 
   return (
-    <div className="min-h-[calc(100svh-4rem)] bg-[#f8f8f6] text-[#171717] dark:bg-[#0b0c0c] dark:text-white">
+    <div className="min-h-[calc(100svh-4rem)] bg-white text-[#171717] dark:bg-[#111313] dark:text-white">
       <main className="mx-auto w-full max-w-4xl px-5 py-6 sm:px-8 sm:py-8">
         <div className="animate-in fade-in duration-300 ease-out">
           <div className="mb-6">
@@ -107,7 +107,7 @@ function DeveloperMailboxCreator({ email }: { email: string }) {
             </p>
           </div>
 
-          <section className="mt-6 overflow-hidden rounded-2xl border border-black/[0.09] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
+          <section className="mt-6 overflow-hidden rounded-2xl border border-black/[0.09] bg-gray-50 shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
 
             {/* Section header */}
             <div className="border-b border-black/[0.07] px-5 py-4 dark:border-white/[0.07]">

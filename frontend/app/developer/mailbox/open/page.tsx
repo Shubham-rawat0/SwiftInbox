@@ -27,7 +27,7 @@ export default function OpenMailboxPage() {
   }
 
   return (
-    <div className="min-h-[calc(100svh-4rem)] bg-[#f8f8f6] text-[#171717] dark:bg-[#0b0c0c] dark:text-white">
+    <div className="min-h-[calc(100svh-4rem)] bg-white text-[#171717] dark:bg-[#111313] dark:text-white">
       <main className="mx-auto w-full max-w-4xl px-5 py-6 sm:px-8 sm:py-8">
         <div className="animate-in fade-in duration-300 ease-out">
           <div className="mb-6">
@@ -46,7 +46,7 @@ export default function OpenMailboxPage() {
 
             <form
               onSubmit={openMailbox}
-              className="overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.035)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20"
+              className="overflow-hidden rounded-2xl border border-black/[0.08] bg-gray-50 shadow-[0_8px_30px_rgba(0,0,0,0.035)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20"
             >
               <div className="border-b border-black/[0.07] px-5 py-4 dark:border-white/[0.07]">
                 <p className="text-[14px] font-semibold">

@@ -185,7 +185,7 @@ function WebhooksManager() {
   const showContent = !loading && !signedOut && !failed
 
   return (
-    <div className="min-h-[calc(100svh-4rem)] bg-[#f8f8f6] text-[#171717] dark:bg-[#0b0c0c] dark:text-white">
+    <div className="min-h-[calc(100svh-4rem)] bg-white text-[#171717] dark:bg-[#111313] dark:text-white">
       <main className="mx-auto w-full max-w-4xl px-5 py-6 sm:px-8 sm:py-8">
         <div className="animate-in fade-in duration-300 ease-out">
           <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -195,12 +195,12 @@ function WebhooksManager() {
               </h1>
 
               <p className="mt-1.5 text-[14px] leading-5 text-black/45 dark:text-white/40">
-                Receive realtime HTTP callbacks when something happens on your
-                mailboxes. Delivered with an{" "}
+                Get a request to your endpoint whenever something happens in
+                your mailboxes. Every request includes an{" "}
                 <code className="rounded bg-black/[0.05] px-1 font-mono text-[12px] dark:bg-white/[0.07]">
                   X-Webhook-Signature
                 </code>{" "}
-                header you can use to verify requests.
+                header so you can verify it came from us.
               </p>
             </div>
 
@@ -339,7 +339,7 @@ function WebhooksList({
 
   if (webhooks.length === 0) {
     return (
-      <section className="overflow-hidden rounded-2xl border border-black/[0.09] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
+      <section className="overflow-hidden rounded-2xl border border-black/[0.09] bg-gray-50 shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
         <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-black/[0.04] dark:bg-white/[0.05]">
             <Webhook className="size-5 text-black/35 dark:text-white/30" />
@@ -348,7 +348,7 @@ function WebhooksList({
           <div>
             <p className="text-sm font-medium">No webhooks yet</p>
             <p className="mt-1 text-[13px] text-black/40 dark:text-white/35">
-              Create a webhook to receive callbacks for your mailboxes.
+              Create one to get notified when your mailboxes receive mail.
             </p>
           </div>
 
@@ -366,7 +366,7 @@ function WebhooksList({
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-black/[0.09] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
+    <section className="overflow-hidden rounded-2xl border border-black/[0.09] bg-gray-50 shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
       <div className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
         {webhooks.map((webhook) => {
           return (
@@ -687,7 +687,7 @@ function WebhookRow({
             <div>
               <p className="text-sm font-semibold">Events</p>
               <p className="mt-0.5 text-xs text-black/40 dark:text-white/35">
-                Toggle the delivery events this endpoint will receive.
+                Choose which events this endpoint should receive.
               </p>
 
               <div
@@ -738,7 +738,7 @@ function WebhookRow({
             <div>
               <p className="text-sm font-semibold">Linked mailboxes</p>
               <p className="mt-0.5 text-xs text-black/40 dark:text-white/35">
-                Events are only delivered for addresses linked to this webhook.
+                We only send events for the mailboxes you link here.
               </p>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -934,7 +934,7 @@ function DeadLetters({
   }
 
   return (
-    <section className="mt-6 overflow-hidden rounded-2xl border border-black/[0.09] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
+    <section className="mt-6 overflow-hidden rounded-2xl border border-black/[0.09] bg-gray-50 shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
@@ -952,7 +952,7 @@ function DeadLetters({
               {unseenCount === 1 ? "delivery" : "deliveries"}{" "}
               {deadLetters.length > unseenCount
                 ? `of ${deadLetters.length} total`
-                : "that exhausted retries and were parked."}
+                : "we couldn't deliver after several tries."}
             </p>
           </div>
         </div>
@@ -1240,7 +1240,7 @@ function CreateWebhookDialog({
               </h2>
 
               <p className="mt-1 text-[13px] leading-5 text-black/45 dark:text-white/40">
-                Point us at an HTTPS endpoint to receive event callbacks.
+                Enter an HTTPS URL where we should send events.
               </p>
             </div>
 
