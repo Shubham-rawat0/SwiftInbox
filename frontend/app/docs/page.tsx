@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function DocsPage() {
   return (
-    <div className="min-h-screen bg-[#f7f6f3] text-[#14161a] dark:bg-[#0d0e0c] dark:text-[#f3f2ef]">
+    <div className="min-h-screen bg-white text-[#14161a] dark:bg-[#131413] dark:text-[#f3f2ef]">
       <main className="mx-auto max-w-[1400px] px-6 py-10 sm:px-10 lg:px-16">
         <header className="border-b border-black/[0.08] pb-6 dark:border-white/[0.08]">
           <p

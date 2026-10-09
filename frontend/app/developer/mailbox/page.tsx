@@ -147,7 +147,7 @@ function DeveloperMailboxList() {
   }
 
   return (
-    <div className="min-h-[calc(100svh-4rem)] bg-[#f8f8f6] text-[#171717] dark:bg-[#0b0c0c] dark:text-white">
+    <div className="min-h-[calc(100svh-4rem)] bg-white text-[#171717] dark:bg-[#111313] dark:text-white">
       <main className="mx-auto w-full max-w-4xl px-5 py-6 sm:px-8 sm:py-8">
         <div className="animate-in fade-in duration-300 ease-out">
           <div className="mb-6">
@@ -188,7 +188,7 @@ function DeveloperMailboxList() {
                   return (
                     <div
                       key={address}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-black/[0.08] bg-white px-4 py-4.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-black/[0.14] dark:border-white/[0.08] dark:bg-[#111313] dark:hover:border-white/[0.16] sm:px-5 sm:py-5"
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-black/[0.08] bg-gray-50 px-4 py-4.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-black/[0.14] dark:border-white/[0.08] dark:bg-[#111313] dark:hover:border-white/[0.16] sm:px-5 sm:py-5"
                     >
                       <Link
                         href={`/developer/mailbox/${username}`}

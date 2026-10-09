@@ -156,7 +156,7 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen bg-[#f7f6f3] text-[#14161a] dark:bg-[#0d0e0c] dark:text-[#f3f2ef]"
+      className="min-h-screen bg-white text-[#14161a] dark:bg-[#131413] dark:text-[#f3f2ef]"
       style={{ fontFamily: "var(--font-sans)" }}
     >
       <style jsx global>{`
@@ -240,7 +240,7 @@ export default function Home() {
           </div>
 
           {/* Right: functional panel */}
-          <div className="rounded-2xl border border-black/[0.09] bg-white dark:border-white/[0.09] dark:bg-[#131413]">
+          <div className="rounded-2xl border border-black/[0.09] bg-gray-50 dark:border-white/[0.09] dark:bg-[#111313]">
             <div className="p-6 sm:p-7">
               <p className="text-[15px] font-semibold">Create a mailbox</p>
               <p className="mt-1 text-[14px] leading-6 text-black/45 dark:text-white/35">

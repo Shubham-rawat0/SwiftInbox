@@ -109,7 +109,7 @@ function ApiKeysManager() {
   const showContent = !loading && !signedOut && !failed
 
   return (
-    <div className="min-h-[calc(100svh-4rem)] bg-[#f8f8f6] text-[#171717] dark:bg-[#0b0c0c] dark:text-white">
+    <div className="min-h-[calc(100svh-4rem)] bg-white text-[#171717] dark:bg-[#111313] dark:text-white">
       <main className="mx-auto w-full max-w-5xl px-5 py-6 sm:px-8 sm:py-8">
         <div className="animate-in fade-in duration-300 ease-out">
           <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -119,9 +119,8 @@ function ApiKeysManager() {
               </h1>
 
               <p className="mt-1.5 text-[14px] leading-5 text-black/45 dark:text-white/40">
-                Create and manage secret keys used to authenticate requests to
-                the Mailbox API. Keys inherit the quotas of your developer
-                account. Select a key to see its usage for {CURRENT_MONTH}.
+                Create keys to call the Mailbox API from your own apps. Each key
+                shares your account&apos;s usage limits.
               </p>
             </div>
 
@@ -235,13 +234,13 @@ function AccountUsageSection({
   ]
 
   return (
-    <section className="mb-6 overflow-hidden rounded-2xl border border-black/[0.09] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
+    <section className="mb-6 overflow-hidden rounded-2xl border border-black/[0.09] bg-gray-50 shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
       <div className="flex items-center justify-between px-5 py-4">
         <div>
           <p className="text-sm font-semibold">Account usage</p>
 
           <p className="mt-0.5 text-xs text-black/40 dark:text-white/35">
-            Total across all keys for {CURRENT_MONTH}.
+            How much you&apos;ve used this month, across all keys.
           </p>
         </div>
 
@@ -260,8 +259,7 @@ function AccountUsageSection({
 
       <div className="border-t border-black/[0.07] bg-black/[0.015] px-5 py-3 dark:border-white/[0.07] dark:bg-white/[0.015]">
         <p className="text-xs leading-5 text-black/40 dark:text-white/35">
-          Quotas apply to your whole account and reset at the start of each
-          month.
+          Limits apply to your whole account and reset each month.
         </p>
       </div>
     </section>
@@ -333,7 +331,7 @@ function KeysTable({
     useState<ApiKeyUsageResponse | null>(null)
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-black/[0.09] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
+    <section className="overflow-hidden rounded-2xl border border-black/[0.09] bg-gray-50 shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:border-white/[0.08] dark:bg-[#111313] dark:shadow-black/20">
       {keys.length === 0 ? (
         <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-black/[0.04] dark:bg-white/[0.05]">
@@ -341,10 +339,9 @@ function KeysTable({
           </span>
 
           <div>
-            <p className="text-sm font-medium">No secret keys yet</p>
+            <p className="text-sm font-medium">No API keys yet</p>
             <p className="mt-1 text-[13px] text-black/40 dark:text-white/35">
-              Create a key to call the API programmatically and track its
-              usage.
+              Create your first key to start calling the API.
             </p>
           </div>
 
